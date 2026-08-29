@@ -256,8 +256,25 @@ Disciplinas marcadas são as **mais críticas** para cumprir o SLA e operar a Es
 
 ## Apresentação (referência)
 
+- Arquivo de slides: [docs/apresentacao.md](./docs/apresentacao.md)
 - Tempo máximo: **20 minutos**
 - Conteúdo sugerido: problema (pico instantâneo) → MVP → arquitetura → SLA → disciplinas críticas → demo (quando houver código)
+
+Para exportar os slides:
+
+```bash
+cd docs && npm run slides:html
+```
+
+---
+
+## Documentação
+
+| Arquivo | Descrição |
+|---------|-----------|
+| [docs/apresentacao.md](./docs/apresentacao.md) | Slides da apresentação (Marp) |
+| [docs/slides/diagrams/](./docs/slides/diagrams/) | Diagramas Mermaid (fonte `.mmd` e SVG) |
+| [docs/package.json](./docs/package.json) | Scripts para gerar diagramas e exportar slides |
 
 ---
 
@@ -274,3 +291,4 @@ Estes itens constam em [REQUISITOS.md](./REQUISITOS.md) como entregáveis futuro
 
 - [DESCRICAO.md](./DESCRICAO.md) — enunciado do projeto
 - [REQUISITOS.md](./REQUISITOS.md) — entregáveis e disciplinas do curso
+- [docs/apresentacao.md](./docs/apresentacao.md) — slides da apresentação
