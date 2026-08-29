@@ -1,5 +1,14 @@
 # EstudaJá — Plataforma de Cursos ao Vivo
 
+## Integrantes
+
+- Gustavo Santos Arruda
+- Pedro Lucas dos Santos Ribeiro
+- Renan Roseno dos Santos
+- Victor da Silva Neves
+
+---
+
 ## Contexto do negócio
 
 A **EstudaJá** é uma EdTech de aulas ao vivo em massa — estilo "aula magna" — com milhares de alunos simultâneos e conteúdo gravado sob demanda.
