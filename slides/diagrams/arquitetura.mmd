@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph Clientes
+        ALuno[Aluno / Browser]
+    end
+
+    subgraph Edge
+        CDN[CDN]
+        WAF[WAF]
+        LB[Load Balancer]
+    end
+
+    subgraph Aplicacao["Aplicação (containers)"]
+        WEB[Frontend]
+        API[API REST]
+        WS[WebSocket Gateway]
+    end
+
+    subgraph Streaming
+        STREAM[Provedor de Streaming]
+    end
+
+    subgraph Dados
+        PG[(PostgreSQL)]
+        REDIS[(Redis)]
+        STORAGE[(Object Storage)]
+    end
+
+    ALuno --> WAF --> CDN --> LB
+    LB --> WEB & API & WS
+    WEB --> STREAM
+    API --> PG & REDIS & STORAGE
+    WS --> REDIS

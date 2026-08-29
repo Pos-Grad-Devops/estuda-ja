@@ -1,0 +1,27 @@
+{
+  "name": "estuda-ja",
+  "version": "1.0.0",
+  "description": "A **EstudaJá** é uma EdTech de aulas ao vivo em massa — estilo \"aula magna\" — com milhares de alunos simultâneos e conteúdo gravado sob demanda.",
+  "main": "index.js",
+  "scripts": {
+    "slides:diagrams": "for f in roadmap arquitetura fluxo; do mmdc -i slides/diagrams/$f.mmd -o slides/diagrams/$f.svg -b transparent; done",
+    "slides:html": "marp apresentacao.md -o apresentacao.html",
+    "slides:pdf": "marp apresentacao.md -o apresentacao.pdf",
+    "slides:pptx": "marp apresentacao.md -o apresentacao.pptx"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pos-Grad-Devops/estuda-ja.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pos-Grad-Devops/estuda-ja/issues"
+  },
+  "homepage": "https://github.com/Pos-Grad-Devops/estuda-ja#readme",
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.16.0"
+  }
+}

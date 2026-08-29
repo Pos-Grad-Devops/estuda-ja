@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant A as Aluno
+    participant CDN as CDN
+    participant APP as Frontend
+    participant API as Backend
+    participant STREAM as Streaming
+    participant WS as Chat
+    participant R as Redis
+
+    Note over API,STREAM: Pré-aquecimento T-15 min<br/>Réplicas elevadas · Stream ativo
+
+    A->>CDN: Acessa página da aula
+    APP->>API: Valida matrícula
+    APP->>STREAM: Conecta player
+    APP->>WS: Conecta WebSocket
+    A->>WS: Mensagem no chat
+    WS->>R: Publish / Broadcast

@@ -11,6 +11,11 @@ style: |
   blockquote { font-style: italic; border-left: 4px solid #0366d6; padding-left: 1em; }
 ---
 
+<!--
+  Diagramas: blocos ```mermaid``` não renderizam no Marp CLI v4.
+  Fonte em slides/diagrams/*.mmd → SVG gerado com npm run slides:diagrams
+-->
+
 <!-- _class: lead -->
 
 # EstudaJá
@@ -65,23 +70,7 @@ Entregar o essencial no prazo curto — evoluir depois.
 
 ## Roadmap
 
-```mermaid
-timeline
-    title Roadmap EstudaJá
-    section Fase 1 — MVP
-        Semanas 1-4 : Streaming + player
-                      : Chat básico
-                      : Auth e cadastro
-    section Fase 2 — Consolidação
-        Semanas 5-8 : VOD completo
-                      : Pré-aquecimento de infra
-    section Fase 3 — Escala
-        Semanas 9-12 : Certificados automáticos
-                       : Testes de carga
-    section Fase 4 — Maturidade
-        Semanas 13+ : Microsserviços
-                      : Multi-região
-```
+![width:950px](./slides/diagrams/roadmap.svg)
 
 ---
 
@@ -98,89 +87,33 @@ timeline
 
 ## Arquitetura MVP
 
-```mermaid
-flowchart TB
-    subgraph Clientes
-        ALuno[Aluno / Browser]
-    end
-
-    subgraph Edge
-        CDN[CDN]
-        WAF[WAF]
-        LB[Load Balancer]
-    end
-
-    subgraph Aplicacao["Aplicação (containers)"]
-        WEB[Frontend]
-        API[API REST]
-        WS[WebSocket Gateway]
-    end
-
-    subgraph Streaming
-        STREAM[Provedor de Streaming]
-    end
-
-    subgraph Dados
-        PG[(PostgreSQL)]
-        REDIS[(Redis)]
-        STORAGE[(Object Storage)]
-    end
-
-    ALuno --> WAF --> CDN --> LB
-    LB --> WEB & API & WS
-    WEB --> STREAM
-    API --> PG & REDIS & STORAGE
-    WS --> REDIS
-```
+![width:950px](./slides/diagrams/arquitetura.svg)
 
 ---
 
 ## Fluxo — pico instantâneo
 
-```mermaid
-sequenceDiagram
-    participant A as Aluno
-    participant CDN as CDN
-    participant APP as Frontend
-    participant API as Backend
-    participant STREAM as Streaming
-    participant WS as Chat
-    participant R as Redis
-
-    Note over API,STREAM: Pré-aquecimento T-15 min<br/>Réplicas elevadas · Stream ativo
-
-    A->>CDN: Acessa página da aula
-    APP->>API: Valida matrícula
-    APP->>STREAM: Conecta player
-    APP->>WS: Conecta WebSocket
-    A->>WS: Mensagem no chat
-    WS->>R: Publish / Broadcast
-```
+![width:950px](./slides/diagrams/fluxo.svg)
 
 ---
 
 ## Stack proposta
 
-Cada camada: opção **AWS (gerenciado)** ou **self-hosted**
+Cada camada oferece opção **AWS (gerenciado)** ou **self-hosted**.
 
 | Camada | AWS | Self-hosted |
 |--------|-----|-------------|
 | Frontend | Amplify / CloudFront | Next.js + nginx |
 | Backend | ECS Fargate | Docker Compose |
-| Streaming | AWS IVS | NGINX-RTMP |
-| Banco | RDS PostgreSQL | PostgreSQL em VM |
-| Cache | ElastiCache Redis | Redis em VM |
-| Orquestração | **ECS Fargate + ALB** | Docker Compose |
+| Streaming ao vivo | AWS IVS | NGINX-RTMP |
+| VOD / armazenamento | S3 + CloudFront | MinIO + CDN |
+| Chat | API Gateway WS + Lambda | Socket.io + Redis Pub/Sub |
+| Banco / cache | RDS PostgreSQL · ElastiCache | PostgreSQL · Redis em VM |
+| Auth | Cognito | Keycloak |
+| Orquestração | ECS Fargate + ALB | Docker Compose / Swarm |
+| CI/CD · IaC · observabilidade | GitHub Actions · Terraform · CloudWatch | GitHub Actions · Terraform · Prometheus/Grafana |
 
----
-
-## Autoscaling (ECS)
-
-Recomendado para o pico instantâneo — menor complexidade que Kubernetes.
-
-1. **T-15 min:** elevar réplicas de API e chat antes da aula
-2. **Target tracking:** escala por CPU, memória ou conexões WebSocket
-3. **Pós-aula:** reduzir réplicas para controlar custo
+**Autoscaling:** réplicas elevadas antes da aula (T-15 min), target tracking na janela ao vivo e scale down pós-aula.
 
 ---
 
