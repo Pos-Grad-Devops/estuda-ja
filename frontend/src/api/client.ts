@@ -1,0 +1,116 @@
+import { getToken } from '../auth/auth'
+import type { Role, User } from '../auth/auth'
+
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+
+export type Curso = {
+  id: number
+  titulo: string
+  descricao: string
+  created_at: string
+  updated_at: string
+}
+
+export type Aula = {
+  id: number
+  curso_id: number
+  titulo: string
+  descricao: string
+  agendada_em: string
+  status: 'agendada' | 'ao_vivo' | 'encerrada'
+  created_at: string
+  updated_at: string
+  curso?: Curso
+}
+
+export type Aluno = {
+  id: number
+  nome: string
+  email: string
+  created_at: string
+  updated_at: string
+}
+
+export type UserInput = {
+  nome: string
+  email: string
+  password?: string
+  role: Role
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+  })
+
+  if (response.status === 401) {
+    throw new Error('sessão expirada, faça login novamente')
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.error ?? `Erro ${response.status}`)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json()
+}
+
+export const api = {
+  auth: {
+    login: (email: string, password: string) =>
+      request<{ token: string; user: User }>('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }),
+    me: () => request<User>('/api/v1/auth/me'),
+  },
+  cursos: {
+    list: () => request<Curso[]>('/api/v1/cursos'),
+    create: (data: Pick<Curso, 'titulo' | 'descricao'>) =>
+      request<Curso>('/api/v1/cursos', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Pick<Curso, 'titulo' | 'descricao'>) =>
+      request<Curso>(`/api/v1/cursos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => request<void>(`/api/v1/cursos/${id}`, { method: 'DELETE' }),
+  },
+  aulas: {
+    list: (cursoId?: number) =>
+      request<Aula[]>(`/api/v1/aulas${cursoId ? `?curso_id=${cursoId}` : ''}`),
+    create: (data: Pick<Aula, 'curso_id' | 'titulo' | 'descricao' | 'agendada_em' | 'status'>) =>
+      request<Aula>('/api/v1/aulas', { method: 'POST', body: JSON.stringify(data) }),
+    update: (
+      id: number,
+      data: Pick<Aula, 'curso_id' | 'titulo' | 'descricao' | 'agendada_em' | 'status'>,
+    ) => request<Aula>(`/api/v1/aulas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => request<void>(`/api/v1/aulas/${id}`, { method: 'DELETE' }),
+  },
+  alunos: {
+    list: () => request<Aluno[]>('/api/v1/alunos'),
+    create: (data: Pick<Aluno, 'nome' | 'email'>) =>
+      request<Aluno>('/api/v1/alunos', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Pick<Aluno, 'nome' | 'email'>) =>
+      request<Aluno>(`/api/v1/alunos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => request<void>(`/api/v1/alunos/${id}`, { method: 'DELETE' }),
+  },
+  users: {
+    list: () => request<User[]>('/api/v1/users'),
+    create: (data: UserInput & { password: string }) =>
+      request<User>('/api/v1/users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: UserInput) =>
+      request<User>(`/api/v1/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
+  },
+}

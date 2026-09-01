@@ -103,11 +103,11 @@ Cada camada oferece opção **AWS (gerenciado)** ou **self-hosted**.
 
 | Camada | AWS | Self-hosted |
 |--------|-----|-------------|
-| Frontend | Amplify / CloudFront | Next.js + nginx |
-| Backend | ECS Fargate | Docker Compose |
+| Frontend | S3 + CloudFront / Amplify | Vite (React + TS) + nginx |
+| Backend | ECS Fargate (Go) | Go (Fiber ou chi) + Docker Compose |
 | Streaming ao vivo | AWS IVS | NGINX-RTMP |
 | VOD / armazenamento | S3 + CloudFront | MinIO + CDN |
-| Chat | API Gateway WS + Lambda | Socket.io + Redis Pub/Sub |
+| Chat | API Gateway WS + Lambda | WebSocket (Go) + Redis Pub/Sub |
 | Banco / cache | RDS PostgreSQL · ElastiCache | PostgreSQL · Redis em VM |
 | Auth | Cognito | Keycloak |
 | Orquestração | ECS Fargate + ALB | Docker Compose / Swarm |

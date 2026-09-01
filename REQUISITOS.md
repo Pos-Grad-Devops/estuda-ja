@@ -30,8 +30,8 @@
 
 --- 
 ## Entregáveis do projeto 
-- [ ] Repositório do projeto (GitHub, GitLab, Bitbucket, etc)
-- [ ] Estrutura de pipelines inicial (CI)
+- [x] Repositório do projeto (GitHub, GitLab, Bitbucket, etc)
+- [x] Estrutura de pipelines inicial (CI)
 
 --- 
 ## Como apresentar 

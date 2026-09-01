@@ -9,6 +9,117 @@
 
 ---
 
+## Desenvolvimento
+
+### Estrutura do repositório
+
+```
+estuda-ja/
+├── backend/          # API Go (Fiber) + PostgreSQL
+├── frontend/         # Vite + React + TypeScript
+├── docs/             # Apresentação e diagramas
+├── docker-compose.yml
+├── Makefile
+├── AGENTS.md         # Guidelines para agentes de IA e devs
+└── .github/workflows/ci.yml
+```
+
+### Pré-requisitos
+
+- Go 1.25+
+- Node.js 22+
+- Docker e Docker Compose
+
+### Subir infraestrutura local
+
+```bash
+make infra-up          # PostgreSQL + Redis
+```
+
+### Backend (API)
+
+```bash
+cd backend
+go run ./cmd/api
+```
+
+Variáveis padrão:
+
+| Variável | Default |
+|----------|---------|
+| `PORT` | `8080` |
+| `DATABASE_URL` | `postgres://estudaja:estudaja@localhost:5432/estudaja?sslmode=disable` |
+| `CORS_ORIGIN` | `http://localhost:5173` |
+| `JWT_SECRET` | `dev-secret-change-me` |
+| `ADMIN_EMAIL` | `admin@estudaja.com` |
+| `ADMIN_PASSWORD` | `admin123` |
+
+Credenciais padrão do admin inicial (criado automaticamente se não existir).
+
+### Autenticação e permissões
+
+Autenticação própria com JWT e senha hash (bcrypt).
+
+| Perfil | Permissões |
+|--------|------------|
+| **admin** | CRUD completo de cursos, aulas, alunos e usuários |
+| **professor** | Visualiza cursos; cria/edita/exclui aulas |
+| **aluno** | Visualiza cursos e aulas |
+
+| Endpoint | Descrição |
+|----------|-----------|
+| `POST /api/v1/auth/login` | Login (público) |
+| `GET /api/v1/auth/me` | Usuário autenticado |
+| `GET/POST/PUT/DELETE /api/v1/users` | Gestão de usuários (admin) |
+
+Demais endpoints exigem header `Authorization: Bearer <token>`.
+
+### Endpoints (CRUD)
+
+| Recurso | Base |
+|---------|------|
+| Cursos | `GET /api/v1/cursos` (todos) · escrita (admin) |
+| Aulas | `GET /api/v1/aulas` (todos) · escrita (admin, professor) |
+| Alunos | CRUD (admin) |
+| Usuários | CRUD (admin) |
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Acesse http://localhost:5173 e entre com o admin padrão ou um usuário criado pelo admin.
+
+### Stack completa com Docker
+
+```bash
+docker compose up --build
+```
+
+- API: http://localhost:8080
+- Frontend: http://localhost:5173
+- Health: http://localhost:8080/health
+
+### Testes e CI
+
+```bash
+make test
+```
+
+Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e build das imagens Docker. **Deploy fica para uma etapa posterior.**
+
+### Fora do escopo atual
+
+- Streaming ao vivo
+- Chat WebSocket
+- Deploy / hospedagem
+
+---
+
 ## Contexto do negócio
 
 A **EstudaJá** é uma EdTech de aulas ao vivo em massa — estilo "aula magna" — com milhares de alunos simultâneos e conteúdo gravado sob demanda.
@@ -120,11 +231,11 @@ Cada camada oferece uma opção **gerenciada (AWS)** e uma **self-hosted**, para
 
 | Camada | AWS (gerenciado) | Self-hosted | Justificativa |
 |--------|------------------|-------------|---------------|
-| **Frontend** | Amplify ou S3 + CloudFront | Next.js em container + nginx | SSR, boa DX, deploy estático ou containerizado |
-| **Backend API** | ECS Fargate | Docker Compose em VM | API REST + WebSocket para chat |
+| **Frontend** | S3 + CloudFront ou Amplify | Vite (React + TypeScript) + nginx | Build estático, HMR, deploy via CDN |
+| **Backend API** | ECS Fargate | Go (Fiber ou chi) em Docker Compose | API REST + WebSocket; alta concorrência com baixo consumo |
 | **Streaming ao vivo** | AWS IVS | NGINX-RTMP ou Ant Media Server | Escala automática vs. controle total do stream |
 | **VOD / armazenamento** | S3 + CloudFront | MinIO + CDN | Vídeos gravados e assets estáticos |
-| **Chat em tempo real** | API Gateway WebSocket + Lambda | Socket.io + Redis Pub/Sub | Baixa latência; self-hosted reduz custo no MVP |
+| **Chat em tempo real** | API Gateway WebSocket + Lambda | WebSocket (Go) + Redis Pub/Sub | Baixa latência; backend Go gerencia conexões em escala |
 | **Banco de dados** | RDS PostgreSQL | PostgreSQL em container/VM | Relacional, ACID para matrículas e progresso |
 | **Cache** | ElastiCache Redis | Redis em container/VM | Sessões, pub/sub do chat, rate limiting |
 | **Auth** | Cognito | Keycloak ou autenticação própria | OAuth social sem implementar do zero |
@@ -275,15 +386,15 @@ cd docs && npm run slides:html
 | [docs/apresentacao.md](./docs/apresentacao.md) | Slides da apresentação (Marp) |
 | [docs/slides/diagrams/](./docs/slides/diagrams/) | Diagramas Mermaid (fonte `.mmd` e SVG) |
 | [docs/package.json](./docs/package.json) | Scripts para gerar diagramas e exportar slides |
+| [AGENTS.md](./AGENTS.md) | Guidelines e contexto para desenvolvimento (IA e equipe) |
 
 ---
 
-## Próximos passos (fora deste documento)
+## Próximos passos
 
-Estes itens constam em [REQUISITOS.md](./REQUISITOS.md) como entregáveis futuros do projeto:
-
-- [ ] Repositório configurado (GitHub/GitLab/Bitbucket)
-- [ ] Estrutura de pipelines inicial (CI)
+- [ ] Streaming ao vivo
+- [ ] Chat WebSocket
+- [ ] Deploy (hospedagem a definir)
 
 ---
 
