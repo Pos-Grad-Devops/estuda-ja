@@ -1,6 +1,6 @@
 # Quickstart: Chat da aula (004)
 
-Validação ponta a ponta **sem implementar aqui** — guia para após as fases 1–3. Contrato: [chat-ws.md](./contracts/chat-ws.md). Modelo: [data-model.md](./data-model.md).
+Validação ponta a ponta **sem implementar aqui** — guia para após as fases 1–3. Contrato: [chat-ws.md](./contracts/chat-ws.md). Env/infra: [chat-env.md](./contracts/chat-env.md). Modelo: [data-model.md](./data-model.md).
 
 ## Pré-requisitos
 
@@ -21,6 +21,8 @@ make frontend    # Vite; VITE_API_URL=http://localhost:8080
 
 Ou `docker compose up --build` equivalente.
 
+Local = **WebSocket real** na mesma porta HTTP da API (`8080`). Sem vars `REDIS_URL` / `CHAT_AWS_*` / API Gateway.
+
 ### Passos
 
 1. **Browser 1** — login como aluno → abrir ficha da aula demo → painel **Chat** visível (com ou sem live `ao_vivo`).
@@ -34,6 +36,7 @@ Ou `docker compose up --build` equivalente.
 ### Auth negativa (opcional)
 
 - Abrir WS sem `token` ou com token inválido (DevTools / `websocat`) → conexão rejeitada.
+- **Não** colar a URL completa com `?token=` em issues, logs ou slides.
 
 ### Esperado
 
@@ -52,38 +55,51 @@ cd backend && go test ./...
 cd frontend && npm run build
 ```
 
-Esperado: testes de handler/hub/RBAC/erros PT verdes. **Não** exige dois browsers no pipeline.
+Esperado: testes de handler/hub/RBAC/erros PT verdes. **Não** exige dois browsers no pipeline. **Não** exige conta AWS.
 
 ## C — AWS (atrás do ALB / CloudFront)
 
-Mesmo protocolo; URL:
+Mesmo protocolo da §A; URL no browser usa o **`api_url` HTTPS** da sessão (output Terraform / `VITE_API_URL`), convertido para `wss`:
 
 ```text
-wss://<api_url CloudFront>/api/v1/aulas/<id>/chat/ws?token=<JWT>
+wss://<host do api_url>/api/v1/aulas/<id>/chat/ws?token=<JWT>
 ```
 
-`<api_url>` = output/`VITE_API_URL` da sessão (HTTPS). **Não** usar `alb_dns_name` no browser (mixed content / fora do baseline).
+- `<host do api_url>` = host do CloudFront da API (não o `alb_dns_name` — mixed content / fora do baseline).
+- O front já monta essa URL a partir de `VITE_API_URL` + JWT da sessão.
+- **Não** colar URLs com `?token=` em issues, PRs, screenshots ou runbooks compartilhados.
 
-### Notas de infra
+### Notas de infra (P1)
 
-- ALB: `idle_timeout` elevado (plan/research; ex. 3600 s).
-- CloudFront: WS suportado no distribution da API; keepalive `chat.ping` evita idle ~10 min.
-- `desired_count = 1` → hub em memória coerente; sem Redis.
-- Sem API Gateway WebSocket / Lambda.
-- Ciclo: `terraform apply` → publish API/front → warm-up (`/health` + checklist 003 se live) → demo chat dois perfis → `terraform destroy`.
-- Budget `infra/budget/` permanece.
-- **Não** colar logs/URLs com `?token=` em issues.
+| Item | Valor |
+|------|--------|
+| ALB `idle_timeout` | **3600** s (`infra/alb.tf`) — conexões WS longas; sem stickiness no target group (`desired_count = 1`) |
+| CloudFront | Encaminha upgrade WS no distribution da API; idle tipicamente ~**10 min** sem tráfego |
+| Keepalive | Cliente envia `chat.ping` (~2–4 min); servidor responde `chat.pong` — evita corte por idle do CloudFront |
+| Hub | Em memória na task ECS; **sem** Redis/ElastiCache; **sem** API Gateway WebSocket / Lambda |
+| Budget | `infra/budget/` **intocado** (não destruir com a demo) |
+
+### Ciclo da sessão (incremental ≤ ~15 min — SC-005)
+
+Ordem fixa (não redesenhar 001–003):
+
+1. `terraform apply` (stack demo; idle ALB já 3600)
+2. Publish API + frontend (`publish-api.ps1` / `publish-frontend.ps1`)
+3. Warm-up: `GET {api_url}/health` estável (+ checklist IVS/OBS se for demo live)
+4. **Demo chat**: dois perfis (aluno + professor/admin) na mesma aula → enviar/receber; outra aula isolada; F5 = painel vazio
+5. `terraform destroy` — remove API/task/ALB/CloudFront; **chat some com a API** (sem recurso extra)
 
 ### Smoke mínimo AWS
 
 1. Após publish, health OK.
 2. Dois logins na URL do CloudFront do front.
-3. Mesma aula → enviar/receber como no Compose.
-4. Destroy → endpoints da sessão anteriores inválidos.
+3. Mesma aula → enviar/receber como no Compose (fan-out com **nome**).
+4. Destroy → endpoints da sessão anteriores inválidos; budget permanece.
 
 ## Fora deste quickstart
 
-- Moderação (P2)
+- Moderação (P2 / US5)
 - Load test de milhares de conexões
 - Histórico ao reabrir
 - EventBridge apply/destroy do 001
+- ElastiCache / API Gateway WebSocket + Lambda

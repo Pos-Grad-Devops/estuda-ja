@@ -7,7 +7,8 @@ resource "aws_lb" "api" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
 
-  idle_timeout = 60
+  # WebSocket chat (004): conexões longas; ≤ 4000 s (limite ALB). Sem stickiness no TG.
+  idle_timeout = 3600
 
   tags = {
     Name = "${var.project_name}-api"

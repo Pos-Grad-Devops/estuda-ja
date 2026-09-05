@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/auth"
+	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/chat"
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/config"
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/repository"
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/vodstorage"
@@ -27,6 +28,7 @@ type Handler struct {
 	ivsStreamKey      string
 	ivsPlaybackURL    string
 	ivsChannelARN     string
+	chatHub           *chat.Hub
 }
 
 func New(repos *repository.Repositories, cfg config.Config) *Handler {
@@ -40,6 +42,7 @@ func New(repos *repository.Repositories, cfg config.Config) *Handler {
 		ivsStreamKey:      cfg.IVSStreamKey,
 		ivsPlaybackURL:    cfg.IVSPlaybackURL,
 		ivsChannelARN:     cfg.IVSChannelARN,
+		chatHub:           chat.NewHub(),
 	}
 	if h.liveBackend == "" {
 		h.liveBackend = "stub"

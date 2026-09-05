@@ -51,7 +51,10 @@ func main() {
 	})
 
 	app.Use(recover.New())
-	app.Use(logger.New())
+	// ${path} sem query — não registrar ?token= do handshake WS.
+	app.Use(logger.New(logger.Config{
+		Format: "${time} | ${status} | ${latency} | ${method} ${path}\n",
+	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: cfg.CORSOrigin, // origem única via CORS_ORIGIN (sem lista hardcoded)
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
@@ -64,6 +67,9 @@ func main() {
 
 	// Content assinado por query token (sem Bearer) — permite <video src="...">.
 	api.Get("/aulas/:id/vod/content", handlers.GetVodContent)
+
+	// Chat WS: JWT em ?token= (sem Bearer). Hub em memória; independente de live/VOD.
+	api.Get("/aulas/:id/chat/ws", handlers.ChatHandshake, handlers.ChatWS())
 
 	protected := api.Group("", middleware.Authenticate(tokens))
 	protected.Get("/auth/me", handlers.Me)

@@ -56,22 +56,22 @@ description: "Task list — Chat da aula ao vivo (fases = chats isolados)"
 
 ### Implementation
 
-- [ ] T001 [P] [US1] Criar pacote hub em `backend/internal/chat/hub.go`: `map[aula_id]*Room`, register/unregister/broadcast em goroutine única, GC de sala vazia, write mutex por conexão — conforme [data-model.md](./data-model.md) e [research.md](./research.md) §2 — depends: nenhuma — aceite: broadcast só para clientes da mesma `aula_id`; sala vazia não vaza indefinidamente; reinício do processo zera mapa
-- [ ] T002 [P] [US1] Criar testes de hub em `backend/internal/chat/hub_test.go`: isolamento aula A vs B; register/unregister; broadcast inclui remetente — depends: T001 — aceite: `go test ./internal/chat/...` verde; mensagens de A nunca chegam a B
-- [ ] T003 [US1] Implementar `backend/internal/handler/chat_handler.go`: upgrade Fiber `contrib/websocket`; path `GET /api/v1/aulas/:id/chat/ws`; handshake com `?token=` (JWT existente); rejeitar sem token/inválido (401/close); aula inexistente 404; papéis leitura (`admin`/`professor`/`aluno`); lookup `User.Nome` no DB; **não** logar query com token — depends: T001 — aceite: alinhado a [contracts/chat-ws.md](./contracts/chat-ws.md); erros PT; identidade do autor vem do servidor (não do payload cliente)
-- [ ] T004 [US1] No mesmo `chat_handler.go`: frames `chat.send` → validar texto (trim; 1..500 runes Unicode); `chat.message` broadcast (UUID, `aula_id`, `autor.{id,nome}`, `texto`, `enviado_em` BR); `chat.error` PT; `chat.ping`/`chat.pong` keepalive — depends: T003 — aceite: vazio/>500 → erro PT sem broadcast; tipo inválido → erro PT; eco ao remetente; sem frames de moderação/histórico
-- [ ] T005 [US4] Wire em `backend/cmd/api/main.go`: rota WS sob `/api/v1/aulas/:id/chat/ws` com middleware de upgrade; hub singleton no processo; **sem** dependência de `AulaLive`/`AulaVod` — depends: T003, T004 — aceite: Compose/local sobe WS real na porta 8080; sala disponível com aula existente independente do status live
-- [ ] T006 [P] [US4] Confirmar `docker-compose.yml` (e env API): **sem** Redis para chat; **sem** vars `REDIS_URL`/`CHAT_AWS_*`/API GW; JWT/CORS/PORT existentes bastam — [contracts/chat-env.md](./contracts/chat-env.md) — depends: nenhuma — aceite: Compose sobe API com WS na 8080; chat P1 não exige serviço novo
-- [ ] T007 [US1] Testes Go em `backend/internal/handler/chat_handler_test.go` (SQLite `:memory:` / harness HTTP-WS): auth ausente/inválido rejeitado; aula inexistente rejeitada; send válido → `chat.message`; vazio e >500 → `chat.error` PT; isolamento duas aulas; anônimo sem token rejeitado — depends: T005 — aceite: `go test ./...` verde; constitution V / FR-012; multi-cliente E2E **não** obrigatório no CI
-- [ ] T008 [US4] Smoke manual Compose (websocat/curl-ws ou dois clientes de teste): login → WS mesma aula troca mensagem; segunda aula isolada; sem token rejeitado — depends: T007, T006 — aceite: checklist Done da Fase 1
+- [X] T001 [P] [US1] Criar pacote hub em `backend/internal/chat/hub.go`: `map[aula_id]*Room`, register/unregister/broadcast em goroutine única, GC de sala vazia, write mutex por conexão — conforme [data-model.md](./data-model.md) e [research.md](./research.md) §2 — depends: nenhuma — aceite: broadcast só para clientes da mesma `aula_id`; sala vazia não vaza indefinidamente; reinício do processo zera mapa
+- [X] T002 [P] [US1] Criar testes de hub em `backend/internal/chat/hub_test.go`: isolamento aula A vs B; register/unregister; broadcast inclui remetente — depends: T001 — aceite: `go test ./internal/chat/...` verde; mensagens de A nunca chegam a B
+- [X] T003 [US1] Implementar `backend/internal/handler/chat_handler.go`: upgrade Fiber `contrib/websocket`; path `GET /api/v1/aulas/:id/chat/ws`; handshake com `?token=` (JWT existente); rejeitar sem token/inválido (401/close); aula inexistente 404; papéis leitura (`admin`/`professor`/`aluno`); lookup `User.Nome` no DB; **não** logar query com token — depends: T001 — aceite: alinhado a [contracts/chat-ws.md](./contracts/chat-ws.md); erros PT; identidade do autor vem do servidor (não do payload cliente)
+- [X] T004 [US1] No mesmo `chat_handler.go`: frames `chat.send` → validar texto (trim; 1..500 runes Unicode); `chat.message` broadcast (UUID, `aula_id`, `autor.{id,nome}`, `texto`, `enviado_em` BR); `chat.error` PT; `chat.ping`/`chat.pong` keepalive — depends: T003 — aceite: vazio/>500 → erro PT sem broadcast; tipo inválido → erro PT; eco ao remetente; sem frames de moderação/histórico
+- [X] T005 [US4] Wire em `backend/cmd/api/main.go`: rota WS sob `/api/v1/aulas/:id/chat/ws` com middleware de upgrade; hub singleton no processo; **sem** dependência de `AulaLive`/`AulaVod` — depends: T003, T004 — aceite: Compose/local sobe WS real na porta 8080; sala disponível com aula existente independente do status live
+- [X] T006 [P] [US4] Confirmar `docker-compose.yml` (e env API): **sem** Redis para chat; **sem** vars `REDIS_URL`/`CHAT_AWS_*`/API GW; JWT/CORS/PORT existentes bastam — [contracts/chat-env.md](./contracts/chat-env.md) — depends: nenhuma — aceite: Compose sobe API com WS na 8080; chat P1 não exige serviço novo
+- [X] T007 [US1] Testes Go em `backend/internal/handler/chat_handler_test.go` (SQLite `:memory:` / harness HTTP-WS): auth ausente/inválido rejeitado; aula inexistente rejeitada; send válido → `chat.message`; vazio e >500 → `chat.error` PT; isolamento duas aulas; anônimo sem token rejeitado — depends: T005 — aceite: `go test ./...` verde; constitution V / FR-012; multi-cliente E2E **não** obrigatório no CI
+- [X] T008 [US4] Smoke manual Compose (websocat/curl-ws ou dois clientes de teste): login → WS mesma aula troca mensagem; segunda aula isolada; sem token rejeitado — depends: T007, T006 — aceite: checklist Done da Fase 1
 
 ### Done — Fase 1 (obrigatório antes do Chat 2)
 
-- [ ] `go test ./...` verde (hub + chat handlers)
-- [ ] Dois clientes na mesma aula trocam mensagem via WS (Compose)
-- [ ] Aulas isoladas (A ≠ B); sem token / token inválido / aula inexistente rejeitados
-- [ ] Reinício da API limpa salas (efêmero)
-- [ ] **Nenhuma** mudança UI; **nenhuma** mudança Terraform ALB; **sem** tabela de mensagens; **sem** Redis; **sem** moderação
+- [X] `go test ./...` verde (hub + chat handlers)
+- [X] Dois clientes na mesma aula trocam mensagem via WS (Compose)
+- [X] Aulas isoladas (A ≠ B); sem token / token inválido / aula inexistente rejeitados
+- [X] Reinício da API limpa salas (efêmero)
+- [X] **Nenhuma** mudança UI; **nenhuma** mudança Terraform ALB; **sem** tabela de mensagens; **sem** Redis; **sem** moderação
 
 **Checkpoint**: API chat WS pronta. Parar. Abrir novo chat só para Fase 2.
 
@@ -86,19 +86,19 @@ description: "Task list — Chat da aula ao vivo (fases = chats isolados)"
 
 ### Implementation
 
-- [ ] T009 [P] [US1] Estender `frontend/src/api/client.ts` com helper de URL WS (`http(s)` → `ws(s)`) para `/api/v1/aulas/{id}/chat/ws?token=...` a partir de `VITE_API_URL` + token do auth — depends: Fase 1 Done — aceite: local `ws://localhost:8080/...`; AWS `wss://` via mesmo base URL; token só na query do WS (não logado no console em prod path)
-- [ ] T010 [P] [US1] Criar `frontend/src/components/AulaChatPanel.tsx`: connect no mount/abertura; send `chat.send`; lista efêmera de `chat.message`; exibir `autor.nome`; tratar `chat.error` e desconexão em PT; keepalive `chat.ping` opcional (~2–4 min); limpar lista ao unmount/nova conexão — depends: T009 — aceite: reabrir = vazio (FR-009/SC-011); validação UI de vazio/>500 com feedback PT (SC-012); sem controles de moderação
-- [ ] T011 [US1] Em `frontend/src/pages/AulasPage.tsx`: bloco **Chat** embutido na ficha, **distinto** de “Transmissão ao vivo” e “Gravação”; disponível para aula existente com usuário autenticado (independente de live) — depends: T010 — aceite: SC-010; datas BR se exibidas; sem rota/página “Chat” dedicada
-- [ ] T012 [P] [US2] Confirmar `frontend/src/auth/auth.ts` e UI: chat **não** adiciona poderes; aluno continua sem ingest/upload VOD; admin/professor usam o mesmo painel — depends: T011 — aceite: US2 AC2/SC-007; sem novos helpers RBAC de escrita só por causa do chat
-- [ ] T013 [US1] `npm run build` + smoke manual Compose (dois browsers): aluno + professor mesma aula → fan-out ≤ 5 s; outra aula isolada; F5 = painel vazio; vazio/>500 rejeitados — depends: T011, T012 — aceite: checklist Done da Fase 2 / [quickstart.md](./quickstart.md) §A
+- [X] T009 [P] [US1] Estender `frontend/src/api/client.ts` com helper de URL WS (`http(s)` → `ws(s)`) para `/api/v1/aulas/{id}/chat/ws?token=...` a partir de `VITE_API_URL` + token do auth — depends: Fase 1 Done — aceite: local `ws://localhost:8080/...`; AWS `wss://` via mesmo base URL; token só na query do WS (não logado no console em prod path)
+- [X] T010 [P] [US1] Criar `frontend/src/components/AulaChatPanel.tsx`: connect no mount/abertura; send `chat.send`; lista efêmera de `chat.message`; exibir `autor.nome`; tratar `chat.error` e desconexão em PT; keepalive `chat.ping` opcional (~2–4 min); limpar lista ao unmount/nova conexão — depends: T009 — aceite: reabrir = vazio (FR-009/SC-011); validação UI de vazio/>500 com feedback PT (SC-012); sem controles de moderação
+- [X] T011 [US1] Em `frontend/src/pages/AulasPage.tsx`: bloco **Chat** embutido na ficha, **distinto** de “Transmissão ao vivo” e “Gravação”; disponível para aula existente com usuário autenticado (independente de live) — depends: T010 — aceite: SC-010; datas BR se exibidas; sem rota/página “Chat” dedicada
+- [X] T012 [P] [US2] Confirmar `frontend/src/auth/auth.ts` e UI: chat **não** adiciona poderes; aluno continua sem ingest/upload VOD; admin/professor usam o mesmo painel — depends: T011 — aceite: US2 AC2/SC-007; sem novos helpers RBAC de escrita só por causa do chat
+- [X] T013 [US1] `npm run build` + smoke manual Compose (dois browsers): aluno + professor mesma aula → fan-out ≤ 5 s; outra aula isolada; F5 = painel vazio; vazio/>500 rejeitados — depends: T011, T012 — aceite: checklist Done da Fase 2 / [quickstart.md](./quickstart.md) §A
 
 ### Done — Fase 2 (obrigatório antes do Chat 3)
 
-- [ ] Dois browsers na mesma aula veem fan-out com **nome** do autor
-- [ ] Reabrir ficha = painel vazio (sem histórico)
-- [ ] Mensagem vazia ou >500 rejeitada com feedback PT na UI
-- [ ] Painel distinto de Live/VOD; aluno **sem** novos controles live/VOD
-- [ ] Sem moderação na UI; build frontend OK
+- [X] Dois browsers na mesma aula veem fan-out com **nome** do autor
+- [X] Reabrir ficha = painel vazio (sem histórico)
+- [X] Mensagem vazia ou >500 rejeitada com feedback PT na UI
+- [X] Painel distinto de Live/VOD; aluno **sem** novos controles live/VOD
+- [X] Sem moderação na UI; build frontend OK
 
 **Checkpoint**: UI P1 pronta. Parar. Abrir novo chat só para Fase 3.
 
@@ -113,18 +113,18 @@ description: "Task list — Chat da aula ao vivo (fases = chats isolados)"
 
 ### Implementation
 
-- [ ] T014 [US3] Em `infra/alb.tf`: subir `idle_timeout` do ALB da API de 60 → **3600** (≤ 4000); **sem** stickiness no target group; **sem** ElastiCache/API GW WS/Lambda; **sem** tocar `infra/budget/` — depends: Fase 2 Done — aceite: [contracts/chat-env.md](./contracts/chat-env.md) / research §4; `terraform plan` mostra mudança de idle (e nada de Redis/API GW); baseline 001–003 intacta
-- [ ] T015 [P] [US3] Atualizar [quickstart.md](./quickstart.md) (e nota inline se preciso): caminho AWS `wss` via CloudFront `api_url`; keepalive vs idle CF ~10 min; ciclo apply→publish→warm-up→demo chat→destroy; **não** colar URLs com `?token=` — depends: T014 — aceite: avaliador segue smoke §C sem reabrir desenho 001–003
-- [ ] T016 [P] [US3] Atualizar `README.md` (seção Demo AWS / runbook): passos incrementais de chat no ciclo efêmero; local = WS real; CI = testes sem AWS; sem NAT/Redis AWS/API GW WS no P1 — depends: T014 — aceite: SC-005 (≤ 15 min incremental); chat encaixado sem stack paralela
-- [ ] T017 [P] [US4] Atualizar `AGENTS.md`: chat 004 deixa de ser “fora do escopo”; documentar hub in-memory, path WS, RBAC inalterado, moderação P2 ainda fora — depends: T014 — aceite: agente/humano não trata chat como proibido; baseline 001–003 e “sem Redis AWS” permanecem
-- [ ] T018 [US3] Verificação final: `terraform plan` (idle only) + checklist runbook; confirmar budget `infra/budget/` intocado — depends: T015, T016, T017 — aceite: checklist Done da Fase 3
+- [X] T014 [US3] Em `infra/alb.tf`: subir `idle_timeout` do ALB da API de 60 → **3600** (≤ 4000); **sem** stickiness no target group; **sem** ElastiCache/API GW WS/Lambda; **sem** tocar `infra/budget/` — depends: Fase 2 Done — aceite: [contracts/chat-env.md](./contracts/chat-env.md) / research §4; `terraform plan` mostra mudança de idle (e nada de Redis/API GW); baseline 001–003 intacta
+- [X] T015 [P] [US3] Atualizar [quickstart.md](./quickstart.md) (e nota inline se preciso): caminho AWS `wss` via CloudFront `api_url`; keepalive vs idle CF ~10 min; ciclo apply→publish→warm-up→demo chat→destroy; **não** colar URLs com `?token=` — depends: T014 — aceite: avaliador segue smoke §C sem reabrir desenho 001–003
+- [X] T016 [P] [US3] Atualizar `README.md` (seção Demo AWS / runbook): passos incrementais de chat no ciclo efêmero; local = WS real; CI = testes sem AWS; sem NAT/Redis AWS/API GW WS no P1 — depends: T014 — aceite: SC-005 (≤ 15 min incremental); chat encaixado sem stack paralela
+- [X] T017 [P] [US4] Atualizar `AGENTS.md`: chat 004 deixa de ser “fora do escopo”; documentar hub in-memory, path WS, RBAC inalterado, moderação P2 ainda fora — depends: T014 — aceite: agente/humano não trata chat como proibido; baseline 001–003 e “sem Redis AWS” permanecem
+- [X] T018 [US3] Verificação final: `terraform plan` (idle only) + checklist runbook; confirmar budget `infra/budget/` intocado — depends: T015, T016, T017 — aceite: checklist Done da Fase 3
 
 ### Done — Fase 3 (feature P1 completa)
 
-- [ ] `terraform plan` só idle ALB (+ docs); **sem** Redis/API GW/Lambda/sticky
-- [ ] Budget `infra/budget/` intacto; destroy da sessão remove API/chat
-- [ ] README/AGENTS/quickstart descrevem apply→…→demo chat→destroy + nota CloudFront/keepalive
-- [ ] Moderação P2 **não** entregue; 001–003 **não** reabertos
+- [X] `terraform plan` só idle ALB (+ docs); **sem** Redis/API GW/Lambda/sticky
+- [X] Budget `infra/budget/` intacto; destroy da sessão remove API/chat
+- [X] README/AGENTS/quickstart descrevem apply→…→demo chat→destroy + nota CloudFront/keepalive
+- [X] Moderação P2 **não** entregue; 001–003 **não** reabertos
 
 **Checkpoint**: Feature 004 P1 completa. Parar.
 

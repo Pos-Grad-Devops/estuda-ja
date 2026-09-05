@@ -4,6 +4,13 @@ import type { Role, User } from '../auth/auth'
 // VITE_API_URL é embutido no build (Vite). Mudar a sessão = alterar env e rebuild.
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
+/** Converte base HTTP(S) da API em URL WebSocket do chat da aula (`?token=` na query). */
+export function buildAulaChatWsUrl(aulaId: number, token: string): string {
+  const wsBase = API_URL.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:')
+  const path = `/api/v1/aulas/${aulaId}/chat/ws`
+  return `${wsBase}${path}?token=${encodeURIComponent(token)}`
+}
+
 export type Curso = {
   id: number
   titulo: string

@@ -53,11 +53,11 @@ estuda-ja/
 - Ciclo: apply → publish API → health → rebuild front → **warm-up (incl. IVS/OBS)** → demo → **`terraform destroy` entre sessões**
 - Budget/alerta da conta: stack **separada** em `infra/budget/` (limiar default **US$ 5**) — **não** destruir com a demo
 - Segredos: SSM + `*.tfvars` / state locais gitignored — nunca commitados
-- Runbook: [README.md](./README.md) (seção Demo AWS), [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md), streaming [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md)
+- Runbook: [README.md](./README.md) (seção Demo AWS), [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md), streaming [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md), chat [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md)
 
 | Prioridade | Escopo |
 |------------|--------|
-| **P1** | IaC + publish manual + destroy + docs (+ live IVS efêmero) |
+| **P1** | IaC + publish manual + destroy + docs (+ live IVS efêmero + chat WS) |
 | **P2** | Automação warm-up / EventBridge apply–destroy **001** — **gap**; streaming: checklist T−15 + `infra/check-live-warmup.ps1` (health/GetStream, sem apply/destroy) |
 | **P3** | CD GitHub Actions — **opcional** (`.github/workflows/cd.yml`; publish manual `infra/publish-*.ps1` permanece) |
 
@@ -73,9 +73,10 @@ estuda-ja/
 - CD opcional P3 (Actions; gate test/build; secrets de sessão efêmera)
 - **Biblioteca VOD P1** (`002-vod-library`): gravação por aula (upload/replace/delete + playback ~15 min); storage **local** (Compose) ou **S3** (demo AWS); UI na ficha da aula (`AulasPage`); seed `003_seed_vod_demo` + asset `backend/assets/vod/demo-aula.mp4`
 - **Streaming ao vivo P1+P2** (`003-live-streaming-ivs`): `AulaLive` + handlers `live_*`; **stub** local/CI (`LIVE_BACKEND=stub`); **IVS** na demo AWS (`LIVE_BACKEND=ivs`); UI bloco **Transmissão ao vivo** + `LivePlayer`; estados `agendada` \| `ao_vivo` \| `encerrada` (agendada exige horário); warm-up streaming: checklist manual + `infra/check-live-warmup.ps1` (sem EventBridge 001)
+- **Chat da aula P1** (`004-live-class-chat`): hub em memória por `aula_id` (`internal/chat`); `GET /api/v1/aulas/:id/chat/ws?token=...`; UI `AulaChatPanel` na ficha; ALB `idle_timeout = 3600`; local WS real; CI = testes Go sem AWS; **sem** Redis AWS / API GW WS / Lambda; **sem** histórico ao reabrir
 
 ### Fora do escopo (não implementar sem pedido)
-- Chat WebSocket / IVS Chat (feature futura, ex. 004)
+- Moderação de chat P2 / IVS Chat (US5 de `004`)
 - Certificado / presença (ex. 005)
 - Pipeline **live→VOD** (gravação IVS→S3 automática)
 - Tokenização / playback authorization IVS; multi-canal; DVR
@@ -96,10 +97,11 @@ estuda-ja/
 | VOD (gravação da aula) | leitura + escrita | leitura + escrita | só leitura |
 | Live (status/playback) | leitura | leitura | leitura |
 | Live (schedule/cancel/start/stop/ingest) | ✓ | ✓ | — |
+| Chat (WS enviar/receber na aula) | ✓ | ✓ | ✓ |
 | Alunos | CRUD | — | — |
 | Usuários | CRUD | — | — |
 
-Escrita VOD e gestão live = mesmo recorte de aulas (`RequireRoles(admin, professor)`). **Não reabrir** a baseline `001-aws-mvp-terraform` (sem NAT, sem Redis AWS, destroy entre sessões, budget separado).
+Escrita VOD e gestão live = mesmo recorte de aulas (`RequireRoles(admin, professor)`). Chat = papéis com leitura de aulas (não amplia ingest/VOD). **Não reabrir** a baseline `001-aws-mvp-terraform` (sem NAT, sem Redis AWS, destroy entre sessões, budget separado).
 
 Admin inicial (migration `001_seed_admin` via gormigrate): `ADMIN_EMAIL` / `ADMIN_PASSWORD` (default `admin@estudaja.com` / `admin123`).
 
@@ -108,6 +110,8 @@ Seed demo (migration `002_seed_demo`): professor (`DEMO_PROFESSOR_EMAIL` / `DEMO
 Seed VOD (migration `003_seed_vod_demo`): se a aula de demo existir e ainda não tiver VOD, copia `assets/vod/demo-aula.mp4` para o storage (`vod/aulas/{id}/current.mp4`) e cria metadados `publicado`. Idempotente. Domínio backend: `handler/vod_handler.go`, `repository/vod_repository.go`, `vodstorage/` (local \| s3).
 
 Live (feature `003`): modelo `AulaLive` (`handler/live_handler.go`, `repository/live_repository.go`); status `agendada` \| `ao_vivo` \| `encerrada` (ausência = `inativa`); schedule/cancel/start/stop; env `LIVE_BACKEND` (`stub` \| `ivs`) + `IVS_*` ([contracts/live-env](./specs/003-live-streaming-ivs/contracts/live-env.md)). Stub ignora `IVS_*`; AWS fail-fast se `ivs` incompleto. `Aula.Status` CRUD **não** é o estado da live. Sem seed `ao_vivo`. IaC: `infra/ivs.tf` + SSM/ECS; output só `ivs_channel_arn`. Warm-up: [check-live-warmup.ps1](./infra/check-live-warmup.ps1).
+
+Chat (feature `004`): hub in-process (`internal/chat`) por `aula_id`; `handler/chat_handler.go`; path `GET /api/v1/aulas/:id/chat/ws?token=...` (JWT na query; não logar URI com token); texto ≤ 500; sala independente do status live; mensagens efêmeras à conexão; UI `AulaChatPanel` na `AulasPage`. ALB `idle_timeout = 3600` (`infra/alb.tf`); sem stickiness; sem Redis/API GW WS. Moderação P2 **fora**. Contratos: [chat-ws](./specs/004-live-class-chat/contracts/chat-ws.md), [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
 
 ## Backend (Go)
 
@@ -122,7 +126,8 @@ backend/
 │   ├── database/
 │   ├── models/               # entidades GORM (incl. AulaVod, AulaLive)
 │   ├── repository/           # um arquivo por domínio (*_repository.go)
-│   ├── handler/              # um arquivo por domínio (*_handler.go; live_handler.go)
+│   ├── handler/              # um arquivo por domínio (*_handler.go; live_handler.go; chat_handler.go)
+│   ├── chat/                 # hub WebSocket em memória por aula_id
 │   ├── vodstorage/           # Storage local | S3 (Put/Open/Delete; Presign no S3)
 │   ├── middleware/
 │   ├── auth/
@@ -149,10 +154,10 @@ backend/
 
 ```
 frontend/src/
-├── api/client.ts       # fetch + token JWT (incl. live + vod)
+├── api/client.ts       # fetch + token JWT (incl. live + vod + helper URL WS chat)
 ├── auth/               # AuthContext, permissions, ProtectedRoute
-├── components/         # LivePlayer (IVS Player / mensagem stub)
-├── pages/              # uma page por recurso (live na AulasPage)
+├── components/         # LivePlayer; AulaChatPanel (chat da aula)
+├── pages/              # uma page por recurso (live + chat na AulasPage)
 └── utils/date.ts       # datas BR (espelhar backend)
 ```
 
@@ -202,7 +207,8 @@ cd docs && npm run slides:html   # exportar apresentação
 ## Ao iniciar um chat novo
 
 1. Ler este arquivo e, se necessário, [README.md](./README.md) (Desenvolvimento + Demo AWS)
-2. Confirmar escopo: streaming `003` **completo** (P1+P2) — não tratar como proibido; **não** implementar chat, certificado, live→VOD ou EventBridge apply/destroy do 001 sem pedido explícito
-3. Na AWS: preferir destroy entre sessões; não sugerir NAT nem Redis AWS; CD = opcional (não substitui publish manual); warm-up T−15 inclui canal IVS + OBS **antes** de T−0; script `check-live-warmup.ps1` só health/sinal
-4. Manter RBAC e formato de datas ao tocar em API ou UI (live = mesmo recorte de aulas; schedule/cancel também)
+2. Confirmar escopo: streaming `003` e chat `004` P1 **completos** — não tratar como proibidos; **não** implementar certificado, moderação de chat P2, live→VOD ou EventBridge apply/destroy do 001 sem pedido explícito
+3. Na AWS: preferir destroy entre sessões; não sugerir NAT nem Redis AWS; CD = opcional (não substitui publish manual); warm-up T−15 inclui canal IVS + OBS **antes** de T−0; script `check-live-warmup.ps1` só health/sinal; chat some com a API no destroy
+4. Manter RBAC e formato de datas ao tocar em API ou UI (live = mesmo recorte de aulas; chat não amplia ingest/VOD)
 5. Responder em português
+6. Próximo produto após 004 P1 = **005 certificado** (salvo pedido explícito de outro escopo)

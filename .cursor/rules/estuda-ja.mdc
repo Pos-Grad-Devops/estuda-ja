@@ -22,19 +22,20 @@ Go/Fiber · Vite/React/TS · PostgreSQL · JWT+bcrypt · ECS Fargate + S3/CloudF
 ## Demo AWS
 - Caminho: AWS gerenciado (não sugerir self-hosted como demo)
 - Sem NAT · sem Redis AWS · destroy entre sessões · budget permanece
-- Runbook: README (Demo AWS) + `specs/001-aws-mvp-terraform/quickstart.md` + live `specs/003-live-streaming-ivs/quickstart.md`
+- Runbook: README (Demo AWS) + `specs/001-aws-mvp-terraform/quickstart.md` + live `specs/003-live-streaming-ivs/quickstart.md` + chat `specs/004-live-class-chat/quickstart.md`
 - Live P1+P2: stub local (`LIVE_BACKEND=stub`) · IVS na AWS (`ivs`) · estados agendada/ao_vivo/encerrada · OBS no warm-up T−15 · `check-live-warmup.ps1` (só health/sinal)
+- Chat P1 (`004`): WS na API · hub in-memory · ALB idle 3600 · sem Redis/API GW WS · moderação P2 fora
 
 ## RBAC
-- **admin**: CRUD tudo + usuários + live/VOD
-- **professor**: lê cursos; CRUD aulas + live/VOD
-- **aluno**: lê cursos, aulas, VOD e live (sem ingest/gestão)
+- **admin**: CRUD tudo + usuários + live/VOD + chat
+- **professor**: lê cursos; CRUD aulas + live/VOD + chat
+- **aluno**: lê cursos, aulas, VOD, live e chat (sem ingest/gestão)
 
 ## Datas
 Formato BR: `dd/mm/yyyy` ou `dd/mm/yyyy HH:mm` — backend `timeutil`, frontend `utils/date.ts`
 
 ## Fora do escopo (não implementar sem pedir)
-Chat WebSocket · Certificado · live→VOD · OAuth externo · EventBridge apply/destroy da stack 001 · CD Actions (P3 opcional)
+Moderação chat P2 · Certificado · live→VOD · OAuth externo · EventBridge apply/destroy da stack 001 · CD Actions (P3 opcional)
 
 ## Código
 Escopo mínimo · seguir convenções existentes · erros API em português · testes Go ao alterar handlers

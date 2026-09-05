@@ -125,14 +125,16 @@ Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e b
 
 ### Fora do escopo atual (produto)
 
-- Chat WebSocket / certificado / pipeline live→VOD / tokenização IVS
+- Certificado / presença · pipeline live→VOD · tokenização IVS
+- Moderação de chat (P2 da feature `004`)
 - Estados live P2 (`agendada` ricos — Fase 5 de `003`) sem pedido explícito
 - OAuth externo
 - Redis/ElastiCache na AWS
 - Domínio customizado
 - Automação EventBridge de apply/destroy (P2)
 
-Streaming ao vivo P1 (`003`) **está implementado** (stub local + IVS na demo AWS) — ver seção Demo AWS e [quickstart 003](./specs/003-live-streaming-ivs/quickstart.md).
+Streaming ao vivo P1 (`003`) **está implementado** (stub local + IVS na demo AWS) — ver seção Demo AWS e [quickstart 003](./specs/003-live-streaming-ivs/quickstart.md).  
+Chat da aula P1 (`004`) **está implementado** (WebSocket na API, hub em memória; local + AWS) — ver [quickstart 004](./specs/004-live-class-chat/quickstart.md).
 
 ---
 
@@ -142,11 +144,12 @@ Caminho oficial de hospedagem acadêmica: **AWS gerenciado** via Terraform em `i
 
 Runbook completo e critérios de sucesso: [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md).  
 Streaming ao vivo (IVS + OBS): [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md).  
-Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md) · [live-env](./specs/003-live-streaming-ivs/contracts/live-env.md).
+Chat da aula: [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md).  
+Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md) · [live-env](./specs/003-live-streaming-ivs/contracts/live-env.md) · [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
 
 **Ordem fixa da sessão** (não pular passos):
 
-1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** (incl. canal IVS + smoke live) → 8. **Demo** (VOD + ao vivo) → 9. **Destroy**
+1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** (incl. canal IVS + smoke live) → 8. **Demo** (VOD + ao vivo + **chat**) → 9. **Destroy**
 
 ### 0. Alerta de billing (uma vez por conta)
 
@@ -183,6 +186,8 @@ Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `
 **VOD (bucket efêmero):** o apply cria um bucket S3 privado distinto do frontend (`force_destroy = true`). A task ECS sobe com `VOD_BACKEND=s3`, `VOD_S3_BUCKET` e `VOD_PLAYBACK_TTL=15m`. Não há CloudFront de mídia nem NAT.
 
 **Live (canal IVS efêmero):** o apply cria **um** canal IVS BASIC LOW-latency (`infra/ivs.tf`). A task sobe com `LIVE_BACKEND=ivs`, `IVS_INGEST_ENDPOINT`, `IVS_PLAYBACK_URL`, `IVS_CHANNEL_ARN` e secret SSM `IVS_STREAM_KEY`. Output só `ivs_channel_arn` — **sem** stream key nem playback URL em plaintext. Local/CI permanece `LIVE_BACKEND=stub` (Compose).
+
+**Chat (WebSocket na API):** sem serviço extra. ALB `idle_timeout = 3600` (`infra/alb.tf`) para conexões longas; **sem** stickiness no TG; **sem** Redis/ElastiCache; **sem** API Gateway WebSocket / Lambda. Local = WS real na porta 8080; CI = `go test` sem AWS. Keepalive `chat.ping`/`chat.pong` evita idle ~10 min do CloudFront. Path: `GET /api/v1/aulas/:id/chat/ws?token=...` (não colar URLs com token).
 
 ### 2–5. Publish API → CORS → health → front
 
@@ -273,6 +278,13 @@ O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `d
 
 Local/CI: `LIVE_BACKEND=stub` — estados/RBAC/erros PT **sem** vídeo real (player não finge sinal).
 
+**Demo chat da aula (passos extras ≤ ~15 min incremental — SC-005):**
+
+1. Após publish + health: dois browsers (aluno + professor/admin) em `{frontend_url}` → mesma aula → painel **Chat** (distinto de live/VOD).
+2. Enviar texto ≤ 500 chars → fan-out com **nome** do autor; outra aula isolada; F5 = painel vazio (sem histórico).
+3. WS via `wss` no host de `{api_url}` (CloudFront). Não usar `alb_dns_name` no browser. **Não** colar URLs com `?token=`.
+4. Validação: [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md) §C. Local/CI: §A / §B (WS real no Compose; testes Go sem AWS).
+
 ### 8. Destroy (entre sessões)
 
 ```bash
@@ -290,10 +302,11 @@ terraform destroy
 | ECR | Removido (`force_delete = true`) |
 | Snapshots RDS | Nenhum (`skip_final_snapshot = true`) |
 | Objetos VOD da sessão | Removidos com o bucket (`force_destroy`) |
+| Hub/chat em memória | Some com a task/API (sem recurso TF extra) |
 | Log groups órfãos | Apagar se restarem fora do TF |
 | **Billing → Budgets** | Budget **ainda ativo** |
 
-**Fora do escopo VOD P1:** página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2). Streaming ao vivo é feature **003** (não reabre 002). Chat, certificado, pipeline live→VOD e tokenização IVS continuam fora.
+**Fora do escopo VOD P1:** página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2). Streaming ao vivo é feature **003** (não reabre 002). Chat P1 é feature **004** (hub na API; moderação P2 fora). Certificado, pipeline live→VOD e tokenização IVS continuam fora.
 
 Resíduos e detalhes: [research.md §10](./specs/001-aws-mvp-terraform/research.md).
 
@@ -592,6 +605,7 @@ cd docs && npm run slides:html
 | [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md) | Runbook operacional da sessão AWS |
 | [specs/001-aws-mvp-terraform/](./specs/001-aws-mvp-terraform/) | Spec / plan / tasks / contracts da feature AWS MVP |
 | [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md) | Runbook streaming ao vivo (IVS + OBS) no ciclo 001 |
+| [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md) | Chat da aula (WS local + AWS; idle ALB / keepalive) |
 
 ---
 
@@ -601,7 +615,8 @@ cd docs && npm run slides:html
 - [x] Warm-up P2: **gap documentado** (escolha b) + checklist T−15 min — Fase F
 - [x] CD no GitHub Actions — P3 opcional (Fase G; gate por test/build; secrets de sessão)
 - [x] Streaming ao vivo IVS P1 (`003-live-streaming-ivs`) — stub local + canal efêmero AWS + OBS + runbook
-- [ ] Chat WebSocket / certificado / live→VOD / estados live P2 (fora do P1 atual)
+- [x] Chat da aula P1 (`004-live-class-chat`) — WS na API + UI na ficha + idle ALB
+- [ ] Certificado / presença · live→VOD · moderação de chat P2 · estados live P2 (fora do P1 atual)
 
 ---
 

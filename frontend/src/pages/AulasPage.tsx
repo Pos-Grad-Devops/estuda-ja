@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Aula, AulaLive, AulaVod, Curso, LiveIngest, LivePlayback } from '../api/client'
+import { AulaChatPanel } from '../components/AulaChatPanel'
 import { LivePlayer } from '../components/LivePlayer'
 import { formatDateBR, isValidDateTimeBR, toInputDateTimeBR } from '../utils/date'
 
@@ -645,6 +646,17 @@ export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
                 </form>
               </div>
             )}
+          </div>
+
+          <div className="card" id="chat-block">
+            <h2>Chat</h2>
+            <p>
+              Aula: <strong>{selectedAula.titulo}</strong>
+            </p>
+            <p className="muted">
+              Mensagens só desta conexão — ao reabrir a ficha o painel começa vazio.
+            </p>
+            <AulaChatPanel aulaId={selectedAula.id} />
           </div>
         </>
       )}

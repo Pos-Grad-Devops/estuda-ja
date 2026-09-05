@@ -212,6 +212,50 @@ td {
   font-weight: 600;
 }
 
+.aula-chat-panel {
+  margin-top: 0.5rem;
+}
+
+.aula-chat-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.aula-chat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.aula-chat-item:last-child {
+  border-bottom: none;
+}
+
+.aula-chat-meta {
+  font-size: 0.875rem;
+}
+
+.aula-chat-texto {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aula-chat-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 .warning {
   color: #92400e;
   background: #fffbeb;

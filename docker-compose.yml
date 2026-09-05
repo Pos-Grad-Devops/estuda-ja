@@ -44,6 +44,7 @@ services:
       VOD_LOCAL_DIR: /data/vod
       VOD_PLAYBACK_TTL: 15m
       LIVE_BACKEND: stub
+      # Chat P1 (004): hub em memória na API :8080 — sem REDIS_URL / CHAT_AWS_* / API GW
     ports:
       - "8080:8080"
     volumes:
