@@ -151,7 +151,7 @@ func chatWSURL(host string, aulaID uint, token string) string {
 func dialChatWS(t *testing.T, host string, aulaID uint, token string) *websocket.Conn {
 	t.Helper()
 	u := chatWSURL(host, aulaID, token)
-	dialer := websocket.Dialer{HandshakeTimeout: 2 * time.Second}
+	dialer := websocket.Dialer{HandshakeTimeout: 5 * time.Second}
 	var conn *websocket.Conn
 	var lastErr error
 	var lastStatus int
@@ -170,15 +170,25 @@ func dialChatWS(t *testing.T, host string, aulaID uint, token string) *websocket
 			}
 		}
 		return lastErr == nil
-	}, 2*time.Second, 20*time.Millisecond, "ws handshake status=%d body=%s", lastStatus, lastBody)
+	}, 5*time.Second, 20*time.Millisecond, "ws handshake status=%d body=%s", lastStatus, lastBody)
 	require.NoError(t, lastErr, "ws handshake status=%d body=%s", lastStatus, lastBody)
 	t.Cleanup(func() { _ = conn.Close() })
+	// fasthttp devolve 101 antes do Hijack rodar HandleChatConn; sem isto o
+	// cliente pode enviar chat.send antes do Register no hub (flake no CI).
+	waitChatReady(t, conn)
 	return conn
+}
+
+func waitChatReady(t *testing.T, conn *websocket.Conn) {
+	t.Helper()
+	writeChatJSON(t, conn, map[string]string{"type": "chat.ping"})
+	frame := readChatFrame(t, conn)
+	require.Equal(t, "chat.pong", frame.Type, "conexão WS ainda não pronta no hub")
 }
 
 func readChatFrame(t *testing.T, conn *websocket.Conn) chatFrame {
 	t.Helper()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(2*time.Second)))
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 	_, data, err := conn.ReadMessage()
 	require.NoError(t, err, "lendo frame WS")
 	var frame chatFrame
