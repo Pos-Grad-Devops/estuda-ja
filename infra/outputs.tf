@@ -82,6 +82,11 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.frontend.id
 }
 
+output "vod_bucket_name" {
+  description = "Bucket S3 efêmero de mídia VOD (sessão)."
+  value       = aws_s3_bucket.vod.id
+}
+
 output "cloudfront_frontend_distribution_id" {
   description = "ID da distribution CloudFront do frontend (invalidação)."
   value       = aws_cloudfront_distribution.frontend.id

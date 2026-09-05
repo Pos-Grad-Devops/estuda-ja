@@ -59,3 +59,33 @@ resource "aws_iam_role" "ecs_task" {
   name               = "${var.project_name}-ecs-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume.json
 }
+
+# Task role: Put/Get/Delete de objetos VOD (sem access key no env).
+data "aws_iam_policy_document" "ecs_task_vod_s3" {
+  statement {
+    sid = "VODObjectRW"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject",
+    ]
+    resources = ["${aws_s3_bucket.vod.arn}/vod/*"]
+  }
+
+  statement {
+    sid       = "VODListPrefix"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.vod.arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["vod/*"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_task_vod_s3" {
+  name   = "${var.project_name}-ecs-task-vod-s3"
+  role   = aws_iam_role.ecs_task.id
+  policy = data.aws_iam_policy_document.ecs_task_vod_s3.json
+}

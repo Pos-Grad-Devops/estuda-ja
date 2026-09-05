@@ -18,6 +18,7 @@ func Migrate(db *gorm.DB) error {
 		&models.Curso{},
 		&models.Aula{},
 		&models.Aluno{},
+		&models.AulaVod{},
 	)
 }
 

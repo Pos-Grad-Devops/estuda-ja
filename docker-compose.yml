@@ -40,8 +40,13 @@ services:
       DEMO_PROFESSOR_PASSWORD: professor123
       DEMO_ALUNO_EMAIL: aluno@estudaja.com
       DEMO_ALUNO_PASSWORD: aluno123
+      VOD_BACKEND: local
+      VOD_LOCAL_DIR: /data/vod
+      VOD_PLAYBACK_TTL: 15m
     ports:
       - "8080:8080"
+    volumes:
+      - ./data/vod:/data/vod
     depends_on:
       postgres:
         condition: service_healthy

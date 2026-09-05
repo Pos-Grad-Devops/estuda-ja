@@ -1,27 +1,55 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/auth"
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/config"
 	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/repository"
+	"github.com/Pos-Grad-Devops/estuda-ja/backend/internal/vodstorage"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
 type Handler struct {
-	repos  *repository.Repositories
-	tokens *auth.TokenService
+	repos          *repository.Repositories
+	tokens         *auth.TokenService
+	vod            vodstorage.Storage
+	vodPlaybackTTL time.Duration
+	jwtSecret      string
 }
 
 func New(repos *repository.Repositories, cfg config.Config) *Handler {
-	return &Handler{
-		repos:  repos,
-		tokens: auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration),
+	h := &Handler{
+		repos:          repos,
+		tokens:         auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration),
+		vodPlaybackTTL: cfg.VODPlaybackTTL,
+		jwtSecret:      cfg.JWTSecret,
 	}
+	if h.vodPlaybackTTL <= 0 {
+		h.vodPlaybackTTL = 15 * time.Minute
+	}
+	storage, err := vodstorage.NewFromConfig(context.Background(), cfg)
+	if err != nil {
+		if strings.EqualFold(strings.TrimSpace(cfg.VODBackend), "s3") {
+			log.Fatalf("VOD storage: %v", err)
+		}
+		log.Printf("aviso VOD storage: %v", err)
+	} else {
+		h.vod = storage
+	}
+	return h
+}
+
+// WithStorage substitui o backend de storage (útil em testes).
+func (h *Handler) WithStorage(s vodstorage.Storage) *Handler {
+	h.vod = s
+	return h
 }
 
 func (h *Handler) Health(c *fiber.Ctx) error {

@@ -1,10 +1,18 @@
-.git/
+# Contexto de build da API (backend/Dockerfile)
+.git
+.gitignore
+*.md
+**/*_test.go
 *.exe
 *.test
 *.out
 vendor/
-*.log
-coverage/
 .env
 .env.*
 !.env.example
+data/
+coverage/
+*.log
+.DS_Store
+.idea/
+.vscode/

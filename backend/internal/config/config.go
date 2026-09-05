@@ -21,6 +21,13 @@ type Config struct {
 	DemoProfessorPassword string
 	DemoAlunoEmail        string
 	DemoAlunoPassword     string
+
+	// VOD (contracts/vod-env.md) — local por default; S3 só na demo AWS (Fase 3).
+	VODBackend     string
+	VODLocalDir    string
+	VODS3Bucket    string
+	VODPlaybackTTL time.Duration
+	AWSRegion      string
 }
 
 func Load() Config {
@@ -37,6 +44,12 @@ func Load() Config {
 		DemoProfessorPassword: getEnv("DEMO_PROFESSOR_PASSWORD", "professor123"),
 		DemoAlunoEmail:        getEnv("DEMO_ALUNO_EMAIL", "aluno@estudaja.com"),
 		DemoAlunoPassword:     getEnv("DEMO_ALUNO_PASSWORD", "aluno123"),
+
+		VODBackend:     getEnv("VOD_BACKEND", "local"),
+		VODLocalDir:    getEnv("VOD_LOCAL_DIR", "./data/vod"),
+		VODS3Bucket:    getEnv("VOD_S3_BUCKET", ""),
+		VODPlaybackTTL: getDurationEnv("VOD_PLAYBACK_TTL", 15*time.Minute),
+		AWSRegion:      getEnv("AWS_REGION", ""),
 	}
 }
 

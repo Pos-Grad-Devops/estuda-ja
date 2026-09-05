@@ -39,6 +39,28 @@ export type UserInput = {
   role: Role
 }
 
+export type AulaVod = {
+  aula_id: number
+  status: 'publicado' | 'rascunho'
+  content_type: string
+  size_bytes: number
+  updated_at: string
+}
+
+export type VodPlayback = {
+  playback_url: string
+  expires_at: string
+  expires_in_seconds: number
+}
+
+async function parseError(response: Response): Promise<Error> {
+  if (response.status === 401) {
+    return new Error('sessão expirada, faça login novamente')
+  }
+  const body = await response.json().catch(() => ({}))
+  return new Error((body as { error?: string }).error ?? `Erro ${response.status}`)
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = {
@@ -54,13 +76,33 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers,
   })
 
-  if (response.status === 401) {
-    throw new Error('sessão expirada, faça login novamente')
+  if (!response.ok) {
+    throw await parseError(response)
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json()
+}
+
+/** Multipart sem Content-Type fixo (boundary do browser). */
+async function requestForm<T>(path: string, formData: FormData, method: string): Promise<T> {
+  const token = getToken()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: formData,
+  })
+
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.error ?? `Erro ${response.status}`)
+    throw await parseError(response)
   }
 
   if (response.status === 204) {
@@ -97,6 +139,32 @@ export const api = {
       data: Pick<Aula, 'curso_id' | 'titulo' | 'descricao' | 'agendada_em' | 'status'>,
     ) => request<Aula>(`/api/v1/aulas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => request<void>(`/api/v1/aulas/${id}`, { method: 'DELETE' }),
+  },
+  vod: {
+    get: async (aulaId: number): Promise<AulaVod | null> => {
+      const token = getToken()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+      const response = await fetch(`${API_URL}/api/v1/aulas/${aulaId}/vod`, { headers })
+      if (response.status === 404) {
+        return null
+      }
+      if (!response.ok) {
+        throw await parseError(response)
+      }
+      return response.json()
+    },
+    getPlayback: (aulaId: number) =>
+      request<VodPlayback>(`/api/v1/aulas/${aulaId}/vod/playback`),
+    upload: (aulaId: number, file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return requestForm<AulaVod>(`/api/v1/aulas/${aulaId}/vod`, formData, 'PUT')
+    },
+    remove: (aulaId: number) =>
+      request<{ message?: string }>(`/api/v1/aulas/${aulaId}/vod`, { method: 'DELETE' }),
   },
   alunos: {
     list: () => request<Aluno[]>('/api/v1/alunos'),

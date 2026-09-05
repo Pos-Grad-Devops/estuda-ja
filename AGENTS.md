@@ -71,6 +71,7 @@ estuda-ja/
 - Docker Compose local, pipeline CI
 - Demo AWS efêmera (Terraform + publish manual P1)
 - CD opcional P3 (Actions; gate test/build; secrets de sessão efêmera)
+- **Biblioteca VOD P1** (`002-vod-library`): gravação por aula (upload/replace/delete + playback ~15 min); storage **local** (Compose) ou **S3** (demo AWS); UI na ficha da aula (`AulasPage`); seed `003_seed_vod_demo` + asset `backend/assets/vod/demo-aula.mp4`
 
 ### Fora do escopo (não implementar sem pedido)
 - Streaming ao vivo
@@ -79,6 +80,7 @@ estuda-ja/
 - Redis/ElastiCache na AWS
 - Domínio customizado / certificados ACM custom
 - EventBridge apply/destroy (P2) — só se o chat pedir explicitamente Fase F
+- Página/rota “Biblioteca” dedicada; download do MP4; CloudFront de mídia; rascunho/título/duração VOD (P2 da feature 002)
 
 ### Permissões (RBAC)
 
@@ -88,12 +90,17 @@ estuda-ja/
 | Cursos — escrita | ✓ | — | — |
 | Aulas — leitura | ✓ | ✓ | ✓ |
 | Aulas — escrita | ✓ | ✓ | — |
+| VOD (gravação da aula) | leitura + escrita | leitura + escrita | só leitura |
 | Alunos | CRUD | — | — |
 | Usuários | CRUD | — | — |
+
+Escrita VOD = mesmo recorte de aulas (`RequireRoles(admin, professor)`). **Não reabrir** a baseline `001-aws-mvp-terraform` (sem NAT, sem Redis AWS, destroy entre sessões, budget separado).
 
 Admin inicial (migration `001_seed_admin` via gormigrate): `ADMIN_EMAIL` / `ADMIN_PASSWORD` (default `admin@estudaja.com` / `admin123`).
 
 Seed demo (migration `002_seed_demo`): professor (`DEMO_PROFESSOR_EMAIL` / `DEMO_PROFESSOR_PASSWORD`, default `professor@estudaja.com` / `professor123`), aluno (`DEMO_ALUNO_*`, default `aluno@estudaja.com` / `aluno123`), 1 curso e 1 aula. Idempotente (create if missing). Defaults de **dev** apenas.
+
+Seed VOD (migration `003_seed_vod_demo`): se a aula de demo existir e ainda não tiver VOD, copia `assets/vod/demo-aula.mp4` para o storage (`vod/aulas/{id}/current.mp4`) e cria metadados `publicado`. Idempotente. Domínio backend: `handler/vod_handler.go`, `repository/vod_repository.go`, `vodstorage/` (local \| s3).
 
 ## Backend (Go)
 
@@ -102,12 +109,14 @@ Seed demo (migration `002_seed_demo`): professor (`DEMO_PROFESSOR_EMAIL` / `DEMO
 ```
 backend/
 ├── cmd/api/main.go           # bootstrap, rotas, middleware
+├── assets/vod/               # MP4 seed (demo-aula.mp4) — COPY no Dockerfile
 ├── internal/
 │   ├── config/
 │   ├── database/
-│   ├── models/               # entidades GORM
+│   ├── models/               # entidades GORM (incl. AulaVod)
 │   ├── repository/           # um arquivo por domínio (*_repository.go)
 │   ├── handler/              # um arquivo por domínio (*_handler.go)
+│   ├── vodstorage/           # Storage local | S3 (Put/Open/Delete; Presign no S3)
 │   ├── middleware/
 │   ├── auth/
 │   └── timeutil/             # datas BR (DateTime JSON + parse)

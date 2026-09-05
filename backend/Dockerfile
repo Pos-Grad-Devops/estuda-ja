@@ -16,6 +16,8 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 COPY --from=builder /api .
+# Asset seed VOD (migration 003_seed_vod_demo) — MP4 curto versionado no repo.
+COPY assets/vod /app/assets/vod
 
 EXPOSE 8080
 CMD ["./api"]

@@ -171,9 +171,11 @@ terraform init
 terraform apply
 ```
 
-Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, etc. (contrato terraform-outputs).
+Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, **`vod_bucket_name`**, etc. (contratos terraform-outputs + [terraform-vod](./specs/002-vod-library/contracts/terraform-vod.md)).
 
 `CORS_ORIGIN` no SSM é preenchido automaticamente com a origem HTTPS do CloudFront do frontend (salvo override em `cors_origin`).
+
+**VOD (bucket efêmero):** o apply cria um bucket S3 privado distinto do frontend (`force_destroy = true`). A task ECS sobe com `VOD_BACKEND=s3`, `VOD_S3_BUCKET` e `VOD_PLAYBACK_TTL=15m`. Não há CloudFront de mídia nem NAT.
 
 ### 2–5. Publish API → CORS → health → front
 
@@ -186,6 +188,8 @@ Scripts (PowerShell, a partir de `infra/`):
 ```
 
 Equivalente manual: ver quickstart §§2–3 e contrato frontend-publish. Se alterar `CORS_ORIGIN` depois do apply, atualize o parâmetro SSM e force novo deploy da task.
+
+Na subida da API, a migration `003_seed_vod_demo` copia `backend/assets/vod/demo-aula.mp4` (incluído na imagem) para o storage e cria **um** `AulaVod` `publicado` na aula de demo — o aluno assiste **sem** upload manual (SC-005).
 
 **Este caminho manual P1 permanece o runbook oficial** e funciona com ou sem CD habilitado.
 
@@ -236,6 +240,15 @@ Pular o warm-up = risco de cold start na abertura — inadequado para demo de pi
 
 Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / aluno — ver tabela em Desenvolvimento.
 
+**Demo VOD (passos extras ≤ ~10 min):**
+
+1. Login `aluno@estudaja.com` → **Aulas** → aula de demo → reproduzir gravação seed (sem upload prévio).
+2. (Opcional) Login professor → substituir MP4 ≤ 50 MB na ficha → aluno vê o novo conteúdo.
+3. Confirmar: **sem** página Biblioteca; **sem** download; visitante sem JWT não reproduz.
+4. Validação ponta a ponta: [specs/002-vod-library/quickstart.md](./specs/002-vod-library/quickstart.md).
+
+O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `demo-aula.mp4`). Uploads feitos na sessão anterior **não** voltam após destroy.
+
 ### 8. Destroy (entre sessões)
 
 ```bash
@@ -247,12 +260,15 @@ terraform destroy
 
 | Verificar na console | Esperado |
 |----------------------|----------|
-| ECS, ALB, RDS, CloudFront ×2, S3 site, VPC/SG do projeto | Ausentes |
+| ECS, ALB, RDS, CloudFront ×2, S3 site, **S3 VOD** (`vod_bucket_name`), VPC/SG do projeto | Ausentes |
 | NAT Gateway | **Nenhum** (nunca provisionado → custo NAT = US$ 0) |
 | ECR | Removido (`force_delete = true`) |
 | Snapshots RDS | Nenhum (`skip_final_snapshot = true`) |
+| Objetos VOD da sessão | Removidos com o bucket (`force_destroy`) |
 | Log groups órfãos | Apagar se restarem fora do TF |
 | **Billing → Budgets** | Budget **ainda ativo** |
+
+**Fora do escopo VOD P1:** streaming ao vivo, chat, página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2).
 
 Resíduos e detalhes: [research.md §10](./specs/001-aws-mvp-terraform/research.md).
 

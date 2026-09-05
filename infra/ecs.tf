@@ -45,6 +45,10 @@ resource "aws_ecs_task_definition" "api" {
     environment = [
       { name = "PORT", value = "8080" },
       { name = "JWT_EXPIRATION", value = "24h" },
+      { name = "VOD_BACKEND", value = "s3" },
+      { name = "VOD_S3_BUCKET", value = aws_s3_bucket.vod.id },
+      { name = "VOD_PLAYBACK_TTL", value = "15m" },
+      { name = "AWS_REGION", value = var.aws_region },
     ]
     secrets = [
       { name = "DATABASE_URL", valueFrom = aws_ssm_parameter.database_url.arn },

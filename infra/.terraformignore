@@ -1,12 +1,17 @@
-.git/
+# Terraform — não empacotar state/creds no upload do provider/plan local
 .terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
 crash.log
+crash.*.log
 override.tf
+override.tf.json
 *_override.tf
-.env
-.env.*
-.terraform.lock.hcl
+*_override.tf.json
+.DS_Store
+*.log
+.idea/
+.vscode/

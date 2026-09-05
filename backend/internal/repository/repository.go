@@ -13,6 +13,7 @@ type Repositories struct {
 	Aulas  *AulaRepository
 	Alunos *AlunoRepository
 	Users  *UserRepository
+	Vod    *VodRepository
 }
 
 func New(db *gorm.DB) *Repositories {
@@ -21,5 +22,6 @@ func New(db *gorm.DB) *Repositories {
 		Aulas:  &AulaRepository{db: db},
 		Alunos: &AlunoRepository{db: db},
 		Users:  &UserRepository{db: db},
+		Vod:    &VodRepository{db: db},
 	}
 }
