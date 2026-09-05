@@ -1,0 +1,7 @@
+# Copie para terraform.tfvars (gitignored).
+# Aplique uma vez; não destrua no ciclo da demo.
+
+project_name        = "estudaja"
+budget_limit_usd    = "5"
+notification_email  = "seu-email@exemplo.com"
+threshold_percent   = 80
