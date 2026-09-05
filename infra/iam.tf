@@ -34,6 +34,7 @@ data "aws_iam_policy_document" "ecs_execution_ssm" {
       aws_ssm_parameter.cors_origin.arn,
       aws_ssm_parameter.db_password.arn,
       aws_ssm_parameter.database_url.arn,
+      aws_ssm_parameter.ivs_stream_key.arn,
     ]
   }
 

@@ -17,19 +17,32 @@ import (
 )
 
 type Handler struct {
-	repos          *repository.Repositories
-	tokens         *auth.TokenService
-	vod            vodstorage.Storage
-	vodPlaybackTTL time.Duration
-	jwtSecret      string
+	repos             *repository.Repositories
+	tokens            *auth.TokenService
+	vod               vodstorage.Storage
+	vodPlaybackTTL    time.Duration
+	jwtSecret         string
+	liveBackend       string
+	ivsIngestEndpoint string
+	ivsStreamKey      string
+	ivsPlaybackURL    string
+	ivsChannelARN     string
 }
 
 func New(repos *repository.Repositories, cfg config.Config) *Handler {
 	h := &Handler{
-		repos:          repos,
-		tokens:         auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration),
-		vodPlaybackTTL: cfg.VODPlaybackTTL,
-		jwtSecret:      cfg.JWTSecret,
+		repos:             repos,
+		tokens:            auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration),
+		vodPlaybackTTL:    cfg.VODPlaybackTTL,
+		jwtSecret:         cfg.JWTSecret,
+		liveBackend:       strings.ToLower(strings.TrimSpace(cfg.LiveBackend)),
+		ivsIngestEndpoint: cfg.IVSIngestEndpoint,
+		ivsStreamKey:      cfg.IVSStreamKey,
+		ivsPlaybackURL:    cfg.IVSPlaybackURL,
+		ivsChannelARN:     cfg.IVSChannelARN,
+	}
+	if h.liveBackend == "" {
+		h.liveBackend = "stub"
 	}
 	if h.vodPlaybackTTL <= 0 {
 		h.vodPlaybackTTL = 15 * time.Minute

@@ -44,3 +44,11 @@ resource "aws_ssm_parameter" "database_url" {
   type        = "SecureString"
   value       = local.database_url
 }
+
+# Live IVS (contracts/live-env.md / terraform-ivs.md) — key nunca em output plaintext.
+resource "aws_ssm_parameter" "ivs_stream_key" {
+  name        = "${local.ssm_prefix}/IVS_STREAM_KEY"
+  description = "Stream key IVS da sessão (SecureString; task secret)"
+  type        = "SecureString"
+  value       = data.aws_ivs_stream_key.live.value
+}

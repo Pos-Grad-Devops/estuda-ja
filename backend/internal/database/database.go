@@ -13,13 +13,19 @@ func Connect(dsn string) (*gorm.DB, error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Curso{},
 		&models.Aula{},
 		&models.Aluno{},
 		&models.AulaVod{},
-	)
+		&models.AulaLive{},
+	); err != nil {
+		return err
+	}
+	// Invariante ≤1 live ao_vivo (Postgres/SQLite com índice parcial).
+	_ = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_aula_lives_one_ao_vivo ON aula_lives (status) WHERE status = 'ao_vivo'`).Error
+	return nil
 }
 
 func RunMigrations(db *gorm.DB, cfg config.Config) error {

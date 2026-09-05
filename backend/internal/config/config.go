@@ -28,6 +28,13 @@ type Config struct {
 	VODS3Bucket    string
 	VODPlaybackTTL time.Duration
 	AWSRegion      string
+
+	// Live / IVS (contracts/live-env.md) — stub por default; ivs só na demo AWS (Fase 3).
+	LiveBackend       string
+	IVSIngestEndpoint string
+	IVSStreamKey      string
+	IVSPlaybackURL    string
+	IVSChannelARN     string
 }
 
 func Load() Config {
@@ -50,7 +57,34 @@ func Load() Config {
 		VODS3Bucket:    getEnv("VOD_S3_BUCKET", ""),
 		VODPlaybackTTL: getDurationEnv("VOD_PLAYBACK_TTL", 15*time.Minute),
 		AWSRegion:      getEnv("AWS_REGION", ""),
+
+		LiveBackend:       normalizeLiveBackend(getEnv("LIVE_BACKEND", "stub")),
+		IVSIngestEndpoint: getEnv("IVS_INGEST_ENDPOINT", ""),
+		IVSStreamKey:      getEnv("IVS_STREAM_KEY", ""),
+		IVSPlaybackURL:    getEnv("IVS_PLAYBACK_URL", ""),
+		IVSChannelARN:     getEnv("IVS_CHANNEL_ARN", ""),
 	}
+}
+
+// LiveBackendValid reporta se LIVE_BACKEND é stub ou ivs (após normalização).
+func LiveBackendValid(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "stub", "ivs":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeLiveBackend(v string) string {
+	return strings.ToLower(strings.TrimSpace(v))
+}
+
+// IVSConfigured indica se ingest, stream key e playback estão preenchidos.
+func (c Config) IVSConfigured() bool {
+	return strings.TrimSpace(c.IVSIngestEndpoint) != "" &&
+		strings.TrimSpace(c.IVSStreamKey) != "" &&
+		strings.TrimSpace(c.IVSPlaybackURL) != ""
 }
 
 func getEnv(key, fallback string) string {

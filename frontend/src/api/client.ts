@@ -53,6 +53,36 @@ export type VodPlayback = {
   expires_in_seconds: number
 }
 
+export type LiveStatus = 'inativa' | 'agendada' | 'ao_vivo' | 'encerrada'
+
+export type LiveModo = 'stub' | 'ivs'
+
+export type AulaLive = {
+  aula_id: number
+  status: LiveStatus
+  modo: LiveModo
+  iniciada_em: string | null
+  encerrada_em: string | null
+}
+
+export type LivePlayback = {
+  aula_id: number
+  modo: LiveModo
+  protocolo: 'hls' | null
+  player: 'ivs' | null
+  playback_url: string | null
+  mensagem?: string
+}
+
+export type LiveIngest = {
+  aula_id: number
+  modo: LiveModo
+  ingest_server: string | null
+  stream_key: string | null
+  observacao?: string
+  mensagem?: string
+}
+
 async function parseError(response: Response): Promise<Error> {
   if (response.status === 401) {
     return new Error('sessão expirada, faça login novamente')
@@ -165,6 +195,21 @@ export const api = {
     },
     remove: (aulaId: number) =>
       request<{ message?: string }>(`/api/v1/aulas/${aulaId}/vod`, { method: 'DELETE' }),
+  },
+  live: {
+    get: (aulaId: number) => request<AulaLive>(`/api/v1/aulas/${aulaId}/live`),
+    schedule: (aulaId: number) =>
+      request<AulaLive>(`/api/v1/aulas/${aulaId}/live/schedule`, { method: 'POST' }),
+    cancel: (aulaId: number) =>
+      request<AulaLive>(`/api/v1/aulas/${aulaId}/live/cancel`, { method: 'POST' }),
+    start: (aulaId: number) =>
+      request<AulaLive>(`/api/v1/aulas/${aulaId}/live/start`, { method: 'POST' }),
+    stop: (aulaId: number) =>
+      request<AulaLive>(`/api/v1/aulas/${aulaId}/live/stop`, { method: 'POST' }),
+    getPlayback: (aulaId: number) =>
+      request<LivePlayback>(`/api/v1/aulas/${aulaId}/live/playback`),
+    getIngest: (aulaId: number) =>
+      request<LiveIngest>(`/api/v1/aulas/${aulaId}/live/ingest`),
   },
   alunos: {
     list: () => request<Aluno[]>('/api/v1/alunos'),

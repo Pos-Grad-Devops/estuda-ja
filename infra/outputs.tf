@@ -42,6 +42,7 @@ output "ssm_parameter_names" {
     cors_origin    = aws_ssm_parameter.cors_origin.name
     db_password    = aws_ssm_parameter.db_password.name
     database_url   = aws_ssm_parameter.database_url.name
+    ivs_stream_key = aws_ssm_parameter.ivs_stream_key.name
   }
 }
 
@@ -85,6 +86,12 @@ output "s3_bucket_name" {
 output "vod_bucket_name" {
   description = "Bucket S3 efêmero de mídia VOD (sessão)."
   value       = aws_s3_bucket.vod.id
+}
+
+# Live IVS (contracts/terraform-ivs.md) — sem stream key / sem playback_url.
+output "ivs_channel_arn" {
+  description = "ARN do canal IVS da sessão (ops / checklist T−15)."
+  value       = aws_ivs_channel.live.arn
 }
 
 output "cloudfront_frontend_distribution_id" {

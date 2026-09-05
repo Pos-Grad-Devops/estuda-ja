@@ -131,6 +131,7 @@ func (h *Handler) DeleteAula(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	h.deleteVodForAula(id)
+	h.deleteLiveForAula(id)
 	if err := h.repos.Aulas.Delete(id); err != nil {
 		return handleError(c, err)
 	}

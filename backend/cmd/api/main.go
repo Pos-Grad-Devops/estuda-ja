@@ -22,6 +22,12 @@ const vodBodyLimit = 52*1024*1024 + 1024*1024 // 50 MiB + overhead multipart
 func main() {
 	cfg := config.Load()
 
+	if !config.LiveBackendValid(cfg.LiveBackend) {
+		log.Fatalf("LIVE_BACKEND inválido %q (use stub ou ivs)", cfg.LiveBackend)
+	}
+	if strings.EqualFold(cfg.LiveBackend, "ivs") && !cfg.IVSConfigured() {
+		log.Fatal("LIVE_BACKEND=ivs exige IVS_INGEST_ENDPOINT, IVS_STREAM_KEY e IVS_PLAYBACK_URL")
+	}
 	if strings.EqualFold(cfg.VODBackend, "s3") && strings.TrimSpace(cfg.VODS3Bucket) == "" {
 		log.Fatal("VOD_BACKEND=s3 exige VOD_S3_BUCKET")
 	}
@@ -82,6 +88,14 @@ func main() {
 	protected.Put("/aulas/:id/vod", requireAdminProfessor, handlers.PutVod)
 	protected.Delete("/aulas/:id/vod", requireAdminProfessor, handlers.DeleteVod)
 
+	protected.Get("/aulas/:id/live", handlers.GetLive)
+	protected.Post("/aulas/:id/live/schedule", requireAdminProfessor, handlers.ScheduleLive)
+	protected.Post("/aulas/:id/live/cancel", requireAdminProfessor, handlers.CancelLive)
+	protected.Post("/aulas/:id/live/start", requireAdminProfessor, handlers.StartLive)
+	protected.Post("/aulas/:id/live/stop", requireAdminProfessor, handlers.StopLive)
+	protected.Get("/aulas/:id/live/playback", handlers.GetLivePlayback)
+	protected.Get("/aulas/:id/live/ingest", requireAdminProfessor, handlers.GetLiveIngest)
+
 	protected.Get("/alunos", requireAdmin, handlers.ListAlunos)
 	protected.Post("/alunos", requireAdmin, handlers.CreateAluno)
 	protected.Get("/alunos/:id", requireAdmin, handlers.GetAluno)
@@ -95,7 +109,7 @@ func main() {
 	protected.Delete("/users/:id", requireAdmin, handlers.DeleteUser)
 
 	addr := ":" + cfg.Port
-	log.Printf("listening on %s (VOD_BACKEND=%s)", addr, cfg.VODBackend)
+	log.Printf("listening on %s (VOD_BACKEND=%s LIVE_BACKEND=%s)", addr, cfg.VODBackend, cfg.LiveBackend)
 	if err := app.Listen(addr); err != nil {
 		log.Fatal(err)
 	}

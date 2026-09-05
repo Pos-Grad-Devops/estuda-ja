@@ -60,10 +60,11 @@ Variáveis padrão:
 | `DEMO_PROFESSOR_PASSWORD` | `professor123` |
 | `DEMO_ALUNO_EMAIL` | `aluno@estudaja.com` |
 | `DEMO_ALUNO_PASSWORD` | `aluno123` |
+| `LIVE_BACKEND` | `stub` (local/CI; na AWS = `ivs`) |
 
 Lista completa em `backend/.env.example`. Frontend: `VITE_API_URL` (ver `frontend/.env.example`; rebuild ao mudar).
 
-Seed automático na subida da API: admin (`001`) + professor/aluno + 1 curso + 1 aula (`002`). Defaults acima são só de **dev** local.
+Seed automático na subida da API: admin (`001`) + professor/aluno + 1 curso + 1 aula (`002`) + VOD demo (`003_seed_vod_demo`). Defaults acima são só de **dev** local. Live **não** sobe `ao_vivo` no seed.
 
 ### Autenticação e permissões
 
@@ -71,9 +72,9 @@ Autenticação própria com JWT e senha hash (bcrypt).
 
 | Perfil | Permissões |
 |--------|------------|
-| **admin** | CRUD completo de cursos, aulas, alunos e usuários |
-| **professor** | Visualiza cursos; cria/edita/exclui aulas |
-| **aluno** | Visualiza cursos e aulas |
+| **admin** | CRUD completo de cursos, aulas, alunos e usuários; VOD e live (gestão) |
+| **professor** | Visualiza cursos; cria/edita/exclui aulas; VOD e live (gestão) |
+| **aluno** | Visualiza cursos, aulas, VOD e status/playback live (sem ingest) |
 
 | Endpoint | Descrição |
 |----------|-----------|
@@ -89,6 +90,7 @@ Demais endpoints exigem header `Authorization: Bearer <token>`.
 |---------|------|
 | Cursos | `GET /api/v1/cursos` (todos) · escrita (admin) |
 | Aulas | `GET /api/v1/aulas` (todos) · escrita (admin, professor) |
+| Live | `GET .../aulas/:id/live` + `/playback` (autenticados) · `POST .../start\|stop` + `GET .../ingest` (admin, professor) |
 | Alunos | CRUD (admin) |
 | Usuários | CRUD (admin) |
 
@@ -123,12 +125,14 @@ Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e b
 
 ### Fora do escopo atual (produto)
 
-- Streaming ao vivo
-- Chat WebSocket
+- Chat WebSocket / certificado / pipeline live→VOD / tokenização IVS
+- Estados live P2 (`agendada` ricos — Fase 5 de `003`) sem pedido explícito
 - OAuth externo
 - Redis/ElastiCache na AWS
 - Domínio customizado
 - Automação EventBridge de apply/destroy (P2)
+
+Streaming ao vivo P1 (`003`) **está implementado** (stub local + IVS na demo AWS) — ver seção Demo AWS e [quickstart 003](./specs/003-live-streaming-ivs/quickstart.md).
 
 ---
 
@@ -137,11 +141,12 @@ Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e b
 Caminho oficial de hospedagem acadêmica: **AWS gerenciado** via Terraform em `infra/` (sem NAT Gateway, sem Redis AWS). Self-hosted **não** é o destino da demo — Compose fica só para desenvolvimento local.
 
 Runbook completo e critérios de sucesso: [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md).  
-Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md).
+Streaming ao vivo (IVS + OBS): [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md).  
+Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md) · [live-env](./specs/003-live-streaming-ivs/contracts/live-env.md).
 
 **Ordem fixa da sessão** (não pular passos):
 
-1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** → 8. **Demo** → 9. **Destroy**
+1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** (incl. canal IVS + smoke live) → 8. **Demo** (VOD + ao vivo) → 9. **Destroy**
 
 ### 0. Alerta de billing (uma vez por conta)
 
@@ -171,11 +176,13 @@ terraform init
 terraform apply
 ```
 
-Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, **`vod_bucket_name`**, etc. (contratos terraform-outputs + [terraform-vod](./specs/002-vod-library/contracts/terraform-vod.md)).
+Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, **`vod_bucket_name`**, **`ivs_channel_arn`**, etc. (contratos terraform-outputs + [terraform-vod](./specs/002-vod-library/contracts/terraform-vod.md) + [terraform-ivs](./specs/003-live-streaming-ivs/contracts/terraform-ivs.md)).
 
 `CORS_ORIGIN` no SSM é preenchido automaticamente com a origem HTTPS do CloudFront do frontend (salvo override em `cors_origin`).
 
 **VOD (bucket efêmero):** o apply cria um bucket S3 privado distinto do frontend (`force_destroy = true`). A task ECS sobe com `VOD_BACKEND=s3`, `VOD_S3_BUCKET` e `VOD_PLAYBACK_TTL=15m`. Não há CloudFront de mídia nem NAT.
+
+**Live (canal IVS efêmero):** o apply cria **um** canal IVS BASIC LOW-latency (`infra/ivs.tf`). A task sobe com `LIVE_BACKEND=ivs`, `IVS_INGEST_ENDPOINT`, `IVS_PLAYBACK_URL`, `IVS_CHANNEL_ARN` e secret SSM `IVS_STREAM_KEY`. Output só `ivs_channel_arn` — **sem** stream key nem playback URL em plaintext. Local/CI permanece `LIVE_BACKEND=stub` (Compose).
 
 ### 2–5. Publish API → CORS → health → front
 
@@ -223,20 +230,26 @@ CD **não** substitui apply/destroy nem o warm-up manual. Sem stack ligada, habi
 
 ### 6–7. Warm-up e demo (manual — Fase F / escolha b)
 
-**Decisão P2 (única):** manter **gap** de automação EventBridge/agendamento na nuvem. Warm-up = procedimento **manual** reforçado (não há jobs EventBridge neste repo). Detalhe completo: [quickstart §4](./specs/001-aws-mvp-terraform/quickstart.md).
+**Manual vs automatizado (003 / US5):**
 
-Warm-up **não** é scale-from-zero: stack ligada, `desired_count = 1`, task running, `/health` estável. Antecedência: **T−15 min** antes da janela (RDS cold + primeiro migrate).
+| Parte | Status | O quê |
+|-------|--------|--------|
+| Apply / destroy da stack **001** | **Manual** (gap EventBridge P2) | Não há jobs EventBridge neste repo para ligar/desligar a demo |
+| Checklist T−15 / OBS / start live | **Manual** (runbook) | Operador marca T−15→T−0; professor inicia live e OBS |
+| Health API + sinal IVS (opcional) | **Semi-auto** (script local) | `infra/check-live-warmup.ps1` — só `GET /health` e, se passar `-ChannelArn`, `aws ivs get-stream`. **Não** aplica nem destrói a stack |
 
-Checklist T−15 min (resumo — marcar na ordem):
+Warm-up **não** é scale-from-zero: stack ligada, `desired_count = 1`, task running, `/health` estável. Antecedência: **T−15 min** antes da janela (RDS cold + primeiro migrate + **canal IVS + OBS**).
+
+Checklist T−15 min (resumo — marcar na ordem; detalhe streaming em [003 quickstart §B3](./specs/003-live-streaming-ivs/quickstart.md)):
 
 | Momento | Verificar |
 |---------|-----------|
-| **T−15** | Apply ok; RDS available; ECS `desired_count = 1` + task RUNNING; targets healthy |
-| **T−10** | `GET {api_url}/health` = **200** estável (2–3 chamadas) |
-| **T−5** | Login admin + ≥1 curso (SC-010); UI em `{frontend_url}` (SC-011); amostra RBAC |
-| **T−0** | Não zerar `desired_count`; destroy só após o encerramento |
+| **T−15** | Apply ok; RDS available; ECS `desired_count = 1` + task RUNNING; targets healthy; **`terraform output ivs_channel_arn` presente** |
+| **T−10** | `GET {api_url}/health` = **200** estável (2–3 chamadas) **ou** `.\check-live-warmup.ps1 -ApiUrl {api_url}`; live da aula demo ainda inativa/agendada (ou estado conhecido) |
+| **T−5** | Login admin + ≥1 curso; UI em `{frontend_url}`; amostra RBAC; **professor inicia live + OBS Live; smoke player gestor/aluno** (opcional: script com `-ChannelArn` após OBS Live) |
+| **T−0** | Não zerar `desired_count`; não apply/destroy; encoder continua; destroy só após o encerramento |
 
-Pular o warm-up = risco de cold start na abertura — inadequado para demo de pico.
+Pular o warm-up = risco de cold start na abertura (infra **ou** sinal ao vivo) — inadequado para demo de pico. **Não** subir stack nem OBS no minuto da aula.
 
 Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / aluno — ver tabela em Desenvolvimento.
 
@@ -248,6 +261,17 @@ Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / alu
 4. Validação ponta a ponta: [specs/002-vod-library/quickstart.md](./specs/002-vod-library/quickstart.md).
 
 O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `demo-aula.mp4`). Uploads feitos na sessão anterior **não** voltam após destroy.
+
+**Demo streaming ao vivo (passos extras ≤ ~15 min incremental — SC-005):**
+
+1. Após publish: confirmar `LIVE_BACKEND=ivs` na task e `ivs_channel_arn` no output (sem key/URL em outputs).
+2. (Opcional P2) Professor → **Agendar transmissão** (exige horário na aula) — aluno vê **Agendada** sem player.
+3. No warm-up T−5: professor (ou admin) → **Aulas** → ficha → **Iniciar transmissão** → copiar servidor RTMPS + stream key → OBS (serviço Personalizado; H.264+AAC; keyframe 2 s; ≤ 3,5 Mbps).
+4. Aluno em outra sessão → mesma ficha → distingue **agendada / ao vivo / encerrada** e **Gravação**; reproduz in-app só em **ao vivo** (IVS Player). Sem ingest/botões de gestão.
+5. Encerrar live; se houver VOD 002, a ficha **pode** apontar a gravação (sem pipeline live→VOD). Reiniciar na mesma sessão **sem** novo apply. No máximo **uma** live `ao_vivo`.
+6. Validação ponta a ponta: [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md).
+
+Local/CI: `LIVE_BACKEND=stub` — estados/RBAC/erros PT **sem** vídeo real (player não finge sinal).
 
 ### 8. Destroy (entre sessões)
 
@@ -261,6 +285,7 @@ terraform destroy
 | Verificar na console | Esperado |
 |----------------------|----------|
 | ECS, ALB, RDS, CloudFront ×2, S3 site, **S3 VOD** (`vod_bucket_name`), VPC/SG do projeto | Ausentes |
+| **Canal IVS + stream key** (`ivs_channel_arn` / SSM) | Ausentes (custo IVS contínuo ≈ 0) |
 | NAT Gateway | **Nenhum** (nunca provisionado → custo NAT = US$ 0) |
 | ECR | Removido (`force_delete = true`) |
 | Snapshots RDS | Nenhum (`skip_final_snapshot = true`) |
@@ -268,7 +293,7 @@ terraform destroy
 | Log groups órfãos | Apagar se restarem fora do TF |
 | **Billing → Budgets** | Budget **ainda ativo** |
 
-**Fora do escopo VOD P1:** streaming ao vivo, chat, página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2).
+**Fora do escopo VOD P1:** página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2). Streaming ao vivo é feature **003** (não reabre 002). Chat, certificado, pipeline live→VOD e tokenização IVS continuam fora.
 
 Resíduos e detalhes: [research.md §10](./specs/001-aws-mvp-terraform/research.md).
 
@@ -288,7 +313,7 @@ Dominantes com stack ligada: ALB (~US$ 0,02–0,03/h), RDS `db.t4g.micro`, Farga
 | Prioridade | Item | Status no caminho mínimo |
 |------------|------|---------------------------|
 | **P1** | IaC + publish manual + destroy + docs | Entregue |
-| **P2** | Automação warm-up / EventBridge apply–destroy | **Gap (Fase F / escolha b)** — checklist T−15 min reforçado; sem EventBridge |
+| **P2** | Automação warm-up / EventBridge apply–destroy **001** | **Gap** — checklist T−15 + script health/GetStream streaming; sem EventBridge |
 | **P3** | CD no GitHub Actions (ECR + S3/CF) | **Opcional entregue** (`.github/workflows/cd.yml`); publish manual P1 continua válido |
 
 ### Segredos e state
@@ -566,6 +591,7 @@ cd docs && npm run slides:html
 | [AGENTS.md](./AGENTS.md) | Guidelines e contexto para desenvolvimento (IA e equipe) |
 | [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md) | Runbook operacional da sessão AWS |
 | [specs/001-aws-mvp-terraform/](./specs/001-aws-mvp-terraform/) | Spec / plan / tasks / contracts da feature AWS MVP |
+| [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md) | Runbook streaming ao vivo (IVS + OBS) no ciclo 001 |
 
 ---
 
@@ -574,7 +600,8 @@ cd docs && npm run slides:html
 - [x] Demo AWS efêmera (Terraform + publish manual) — P1
 - [x] Warm-up P2: **gap documentado** (escolha b) + checklist T−15 min — Fase F
 - [x] CD no GitHub Actions — P3 opcional (Fase G; gate por test/build; secrets de sessão)
-- [ ] Streaming ao vivo / chat WebSocket (fora do MVP atual)
+- [x] Streaming ao vivo IVS P1 (`003-live-streaming-ivs`) — stub local + canal efêmero AWS + OBS + runbook
+- [ ] Chat WebSocket / certificado / live→VOD / estados live P2 (fora do P1 atual)
 
 ---
 

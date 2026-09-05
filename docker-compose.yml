@@ -43,6 +43,7 @@ services:
       VOD_BACKEND: local
       VOD_LOCAL_DIR: /data/vod
       VOD_PLAYBACK_TTL: 15m
+      LIVE_BACKEND: stub
     ports:
       - "8080:8080"
     volumes:

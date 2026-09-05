@@ -49,6 +49,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "VOD_S3_BUCKET", value = aws_s3_bucket.vod.id },
       { name = "VOD_PLAYBACK_TTL", value = "15m" },
       { name = "AWS_REGION", value = var.aws_region },
+      { name = "LIVE_BACKEND", value = "ivs" },
+      { name = "IVS_INGEST_ENDPOINT", value = aws_ivs_channel.live.ingest_endpoint },
+      { name = "IVS_PLAYBACK_URL", value = aws_ivs_channel.live.playback_url },
+      { name = "IVS_CHANNEL_ARN", value = aws_ivs_channel.live.arn },
     ]
     secrets = [
       { name = "DATABASE_URL", valueFrom = aws_ssm_parameter.database_url.arn },
@@ -56,6 +60,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "ADMIN_PASSWORD", valueFrom = aws_ssm_parameter.admin_password.arn },
       { name = "ADMIN_EMAIL", valueFrom = aws_ssm_parameter.admin_email.arn },
       { name = "CORS_ORIGIN", valueFrom = aws_ssm_parameter.cors_origin.arn },
+      { name = "IVS_STREAM_KEY", valueFrom = aws_ssm_parameter.ivs_stream_key.arn },
     ]
     logConfiguration = {
       logDriver = "awslogs"

@@ -1,13 +1,44 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
-import type { Aula, AulaVod, Curso } from '../api/client'
+import type { Aula, AulaLive, AulaVod, Curso, LiveIngest, LivePlayback } from '../api/client'
+import { LivePlayer } from '../components/LivePlayer'
 import { formatDateBR, isValidDateTimeBR, toInputDateTimeBR } from '../utils/date'
 
 const VOD_MAX_BYTES = 52_428_800
 
 function formatSizeMB(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function liveStatusLabel(status: AulaLive['status']): string {
+  switch (status) {
+    case 'agendada':
+      return 'Agendada'
+    case 'ao_vivo':
+      return 'Ao vivo'
+    case 'encerrada':
+      return 'Encerrada'
+    default:
+      return 'Inativa'
+  }
+}
+
+function liveStatusClass(status: AulaLive['status']): string | undefined {
+  switch (status) {
+    case 'agendada':
+      return 'live-status-agendada'
+    case 'ao_vivo':
+      return 'live-status-ao_vivo'
+    case 'encerrada':
+      return 'live-status-encerrada'
+    default:
+      return undefined
+  }
+}
+
+function hasAgendadaEm(value: string | undefined | null): boolean {
+  return Boolean(value && value.trim() !== '')
 }
 
 export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
@@ -28,6 +59,13 @@ export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
   const [vodLoading, setVodLoading] = useState(false)
   const [vodError, setVodError] = useState('')
   const [vodBusy, setVodBusy] = useState(false)
+
+  const [live, setLive] = useState<AulaLive | null>(null)
+  const [livePlayback, setLivePlayback] = useState<LivePlayback | null>(null)
+  const [liveIngest, setLiveIngest] = useState<LiveIngest | null>(null)
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [liveError, setLiveError] = useState('')
+  const [liveBusy, setLiveBusy] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -66,15 +104,54 @@ export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
     }
   }
 
+  async function loadLive(aulaId: number) {
+    setLiveLoading(true)
+    setLiveError('')
+    setLive(null)
+    setLivePlayback(null)
+    setLiveIngest(null)
+    try {
+      const statusLive = await api.live.get(aulaId)
+      setLive(statusLive)
+
+      if (statusLive.status === 'ao_vivo') {
+        try {
+          const playback = await api.live.getPlayback(aulaId)
+          setLivePlayback(playback)
+        } catch (err) {
+          setLiveError(err instanceof Error ? err.message : 'Erro ao carregar playback ao vivo')
+        }
+
+        if (canWrite) {
+          try {
+            const ingest = await api.live.getIngest(aulaId)
+            setLiveIngest(ingest)
+          } catch (err) {
+            setLiveError(err instanceof Error ? err.message : 'Erro ao carregar credenciais de ingestão')
+          }
+        }
+      }
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Erro ao carregar transmissão ao vivo')
+    } finally {
+      setLiveLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (selectedAulaId == null) {
       setVod(null)
       setPlaybackUrl(null)
       setVodError('')
+      setLive(null)
+      setLivePlayback(null)
+      setLiveIngest(null)
+      setLiveError('')
       return
     }
     void loadVod(selectedAulaId)
-  }, [selectedAulaId])
+    void loadLive(selectedAulaId)
+  }, [selectedAulaId, canWrite])
 
   function resetForm() {
     setCursoId('')
@@ -183,7 +260,74 @@ export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
     }
   }
 
+  async function handleLiveSchedule() {
+    if (selectedAulaId == null) return
+    setLiveBusy(true)
+    setLiveError('')
+    try {
+      await api.live.schedule(selectedAulaId)
+      await loadLive(selectedAulaId)
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Erro ao agendar transmissão')
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleLiveCancel() {
+    if (selectedAulaId == null) return
+    if (!confirm('Cancelar a transmissão agendada desta aula?')) return
+    setLiveBusy(true)
+    setLiveError('')
+    try {
+      await api.live.cancel(selectedAulaId)
+      await loadLive(selectedAulaId)
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Erro ao cancelar agendamento')
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleLiveStart() {
+    if (selectedAulaId == null) return
+    setLiveBusy(true)
+    setLiveError('')
+    try {
+      await api.live.start(selectedAulaId)
+      await loadLive(selectedAulaId)
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Erro ao iniciar transmissão')
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleLiveStop() {
+    if (selectedAulaId == null) return
+    if (!confirm('Encerrar a transmissão ao vivo desta aula?')) return
+    setLiveBusy(true)
+    setLiveError('')
+    try {
+      await api.live.stop(selectedAulaId)
+      await loadLive(selectedAulaId)
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Erro ao encerrar transmissão')
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
   const selectedAula = items.find((a) => a.id === selectedAulaId) ?? null
+  const liveIsActive = live?.status === 'ao_vivo'
+  const liveIsScheduled = live?.status === 'agendada'
+  const liveIsEnded = live?.status === 'encerrada'
+  const liveIsInactive = !live || live.status === 'inativa'
+  const missingSchedule = selectedAula != null && !hasAgendadaEm(selectedAula.agendada_em)
+  const hasPublishedVod = vod != null && vod.status === 'publicado' && playbackUrl != null
+  const canScheduleLive = canWrite && (liveIsInactive || liveIsEnded) && !missingSchedule
+  const canStartLive = canWrite && !liveIsActive
+  const canCancelScheduled = canWrite && liveIsScheduled
 
   return (
     <section>
@@ -295,66 +439,214 @@ export function AulasPage({ canWrite = false }: { canWrite?: boolean }) {
       </div>
 
       {selectedAula && (
-        <div className="card">
-          <h2>Gravação</h2>
-          <p>
-            Aula: <strong>{selectedAula.titulo}</strong>
-          </p>
+        <>
+          <div className="card" id="live-block">
+            <h2>Transmissão ao vivo</h2>
+            <p>
+              Aula: <strong>{selectedAula.titulo}</strong>
+            </p>
 
-          {vodError && <p className="error">{vodError}</p>}
+            {liveError && <p className="error">{liveError}</p>}
 
-          {vodLoading ? (
-            <p>Carregando gravação...</p>
-          ) : vod && playbackUrl ? (
-            <div className="vod-block">
-              <p className="muted">
-                Atualizada em {formatDateBR(vod.updated_at)} · {formatSizeMB(vod.size_bytes)}
-              </p>
-              <video
-                className="vod-player"
-                controls
-                controlsList="nodownload"
-                preload="metadata"
-                src={playbackUrl}
-              >
-                Seu navegador não suporta reprodução de vídeo.
-              </video>
-            </div>
-          ) : (
-            <p className="muted">Nenhuma gravação disponível para esta aula.</p>
-          )}
+            {liveLoading ? (
+              <p>Carregando transmissão...</p>
+            ) : live ? (
+              <>
+                <p>
+                  Status:{' '}
+                  <span className={liveStatusClass(live.status)}>
+                    {liveStatusLabel(live.status)}
+                  </span>
+                  {live.modo === 'stub' && <span className="muted"> · modo stub (local)</span>}
+                </p>
+                {liveIsScheduled && hasAgendadaEm(selectedAula.agendada_em) && (
+                  <p className="muted">
+                    Horário previsto: {formatDateBR(selectedAula.agendada_em)}. O player ao vivo
+                    só aparece quando a transmissão iniciar.
+                  </p>
+                )}
+                {live.iniciada_em && (
+                  <p className="muted">Iniciada em {formatDateBR(live.iniciada_em)}</p>
+                )}
+                {liveIsEnded && live.encerrada_em && (
+                  <p className="muted">Encerrada em {formatDateBR(live.encerrada_em)}</p>
+                )}
 
-          {canWrite && (
-            <div className="vod-manage">
-              <form onSubmit={handleVodUpload}>
-                <label>
-                  Enviar ou substituir MP4 (máx. 50 MB)
-                  <input
-                    type="file"
-                    name="vodFile"
-                    accept="video/mp4,.mp4"
-                    disabled={vodBusy}
+                {liveIsActive && livePlayback ? (
+                  <LivePlayer
+                    modo={livePlayback.modo}
+                    playbackUrl={livePlayback.playback_url}
+                    mensagem={livePlayback.mensagem}
                   />
-                </label>
+                ) : liveIsScheduled ? (
+                  <p className="muted">
+                    Transmissão agendada — ainda não há sinal ao vivo nesta aula.
+                  </p>
+                ) : liveIsEnded ? (
+                  <p className="muted">
+                    Transmissão encerrada.
+                    {hasPublishedVod ? (
+                      <>
+                        {' '}
+                        Há uma{' '}
+                        <a href="#gravacao-block">gravação disponível</a> no bloco abaixo (VOD —
+                        independente da live).
+                      </>
+                    ) : (
+                      <> Não há gravação publicada para esta aula.</>
+                    )}
+                  </p>
+                ) : (
+                  <p className="muted">
+                    Não há transmissão ao vivo nesta aula. A gravação (VOD), se existir, aparece no
+                    bloco abaixo.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="muted">Não foi possível obter o status da transmissão.</p>
+            )}
+
+            {canWrite && (
+              <div className="live-manage">
+                {missingSchedule && (
+                  <p className="warning">
+                    Recomendado: defina o horário agendado da aula antes de transmitir. Você ainda
+                    pode iniciar a live sem horário. Agendar (estado “agendada”) exige horário.
+                  </p>
+                )}
                 <div className="actions">
-                  <button type="submit" disabled={vodBusy}>
-                    {vodBusy ? 'Enviando...' : vod ? 'Substituir gravação' : 'Publicar gravação'}
-                  </button>
-                  {vod && (
+                  {canScheduleLive && (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={liveBusy || liveLoading}
+                      onClick={() => void handleLiveSchedule()}
+                    >
+                      {liveBusy ? 'Agendando...' : 'Agendar transmissão'}
+                    </button>
+                  )}
+                  {canCancelScheduled && (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={liveBusy || liveLoading}
+                      onClick={() => void handleLiveCancel()}
+                    >
+                      {liveBusy ? 'Cancelando...' : 'Cancelar agendamento'}
+                    </button>
+                  )}
+                  {canStartLive && (
+                    <button
+                      type="button"
+                      disabled={liveBusy || liveLoading}
+                      onClick={() => void handleLiveStart()}
+                    >
+                      {liveBusy ? 'Iniciando...' : 'Iniciar transmissão'}
+                    </button>
+                  )}
+                  {liveIsActive && (
                     <button
                       type="button"
                       className="danger"
-                      disabled={vodBusy}
-                      onClick={() => void handleVodRemove()}
+                      disabled={liveBusy || liveLoading}
+                      onClick={() => void handleLiveStop()}
                     >
-                      Remover gravação
+                      {liveBusy ? 'Encerrando...' : 'Encerrar transmissão'}
                     </button>
                   )}
                 </div>
-              </form>
-            </div>
-          )}
-        </div>
+
+                {liveIsActive && liveIngest && (
+                  <div className="live-ingest">
+                    <h3>Ingestão (OBS)</h3>
+                    {liveIngest.modo === 'stub' || !liveIngest.stream_key ? (
+                      <p className="muted">
+                        {liveIngest.mensagem ??
+                          'Ingestão real só na sessão AWS. No ambiente local não há servidor nem stream key.'}
+                      </p>
+                    ) : (
+                      <>
+                        <label>
+                          Servidor
+                          <code>{liveIngest.ingest_server}</code>
+                        </label>
+                        <label>
+                          Stream key
+                          <code>{liveIngest.stream_key}</code>
+                        </label>
+                        {liveIngest.observacao && (
+                          <p className="muted">{liveIngest.observacao}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="card" id="gravacao-block">
+            <h2>Gravação</h2>
+            <p>
+              Aula: <strong>{selectedAula.titulo}</strong>
+            </p>
+
+            {vodError && <p className="error">{vodError}</p>}
+
+            {vodLoading ? (
+              <p>Carregando gravação...</p>
+            ) : vod && playbackUrl ? (
+              <div className="vod-block">
+                <p className="muted">
+                  Atualizada em {formatDateBR(vod.updated_at)} · {formatSizeMB(vod.size_bytes)}
+                </p>
+                <video
+                  className="vod-player"
+                  controls
+                  controlsList="nodownload"
+                  preload="metadata"
+                  src={playbackUrl}
+                >
+                  Seu navegador não suporta reprodução de vídeo.
+                </video>
+              </div>
+            ) : (
+              <p className="muted">Nenhuma gravação disponível para esta aula.</p>
+            )}
+
+            {canWrite && (
+              <div className="vod-manage">
+                <form onSubmit={handleVodUpload}>
+                  <label>
+                    Enviar ou substituir MP4 (máx. 50 MB)
+                    <input
+                      type="file"
+                      name="vodFile"
+                      accept="video/mp4,.mp4"
+                      disabled={vodBusy}
+                    />
+                  </label>
+                  <div className="actions">
+                    <button type="submit" disabled={vodBusy}>
+                      {vodBusy ? 'Enviando...' : vod ? 'Substituir gravação' : 'Publicar gravação'}
+                    </button>
+                    {vod && (
+                      <button
+                        type="button"
+                        className="danger"
+                        disabled={vodBusy}
+                        onClick={() => void handleVodRemove()}
+                      >
+                        Remover gravação
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </section>
   )
