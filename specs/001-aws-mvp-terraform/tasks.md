@@ -56,25 +56,25 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T001 [US3] Auditar e alinhar `backend/internal/config/config.go` ao contrato [contracts/api-env.md](./contracts/api-env.md) (`PORT`, `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) — depends: nenhuma — aceite: nomes e defaults locais documentáveis; sem hardcode de segredos AWS
-- [ ] T002 [P] [US3] Garantir que `backend/cmd/api/main.go` usa `cfg.CORSOrigin` (origem única configurável) sem lista hardcoded de produção — depends: T001 — aceite: alterar `CORS_ORIGIN` muda o AllowOrigins sem recompilar lógica extra
-- [ ] T003 [P] [US3] Atualizar `frontend/.env.example` e, se existir, `backend`/raiz `.env.example` com variáveis do contrato (sem valores secretos reais) — depends: T001 — aceite: operador local sabe quais envs setar; `VITE_API_URL` documentado
-- [ ] T004 [US3] Criar migration de seed demo idempotente em `backend/internal/database/migrations/002_seed_demo.go` (professor, aluno, 1 curso, 1 aula) e registrar em `backend/internal/database/migrations/migrations.go` — depends: T001 — aceite: banco vazio após migrate tem admin (001) + demo (002); re-run não duplica
-- [ ] T005 [US3] Credenciais demo do seed (emails/senhas de professor/aluno) só via env documentado ou defaults de **dev** explícitos — nunca secrets de conta AWS no git — depends: T004 — aceite: SC-010 localmente (login admin + ≥1 curso); senhas demo citáveis no guia local/README curto se necessário
-- [ ] T006 [P] [US3] Confirmar `frontend/src/api/client.ts` e `frontend/Dockerfile` aceitam `VITE_API_URL` por build-arg/env (rebuild por “sessão” local = mudar env e rebuild) — depends: T003 — aceite: build com `VITE_API_URL` diferente embute a URL no bundle
-- [ ] T007 [US3] Ajustar `docker-compose.yml` (e `Makefile` se necessário) para passar `DATABASE_URL`, `JWT_*`, `CORS_ORIGIN`, `ADMIN_*` ao serviço da API — depends: T001, T004 — aceite: `docker compose up` sobe API + Postgres; migrate/seed rodam na subida
-- [ ] T008 [US3] Se T004/T005 alterarem comportamento testável da API/seed, adicionar/atualizar testes Go relevantes (ex. `backend/internal/database/...` ou handler smoke já existente); senão documentar N/A no PR/resumo do chat — depends: T004 — aceite: constitution V respeitada; `go test ./...` verde
-- [ ] T009 [US3] Garantir CI em `.github/workflows/ci.yml` cobre o branch da feature (push/PR) com jobs backend test+build, frontend build, docker build — depends: T008 — aceite: SC-005 verificável no branch `001-aws-mvp-terraform`
-- [ ] T010 [US3] Verificação manual local: compose up → login 3 perfis → listar cursos; rodar `cd backend && go test ./...` e `cd frontend && npm ci && npm run build` — depends: T007, T009 — aceite: checklist Done da Fase A abaixo
+- [X] T001 [US3] Auditar e alinhar `backend/internal/config/config.go` ao contrato [contracts/api-env.md](./contracts/api-env.md) (`PORT`, `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) — depends: nenhuma — aceite: nomes e defaults locais documentáveis; sem hardcode de segredos AWS
+- [X] T002 [P] [US3] Garantir que `backend/cmd/api/main.go` usa `cfg.CORSOrigin` (origem única configurável) sem lista hardcoded de produção — depends: T001 — aceite: alterar `CORS_ORIGIN` muda o AllowOrigins sem recompilar lógica extra
+- [X] T003 [P] [US3] Atualizar `frontend/.env.example` e, se existir, `backend`/raiz `.env.example` com variáveis do contrato (sem valores secretos reais) — depends: T001 — aceite: operador local sabe quais envs setar; `VITE_API_URL` documentado
+- [X] T004 [US3] Criar migration de seed demo idempotente em `backend/internal/database/migrations/002_seed_demo.go` (professor, aluno, 1 curso, 1 aula) e registrar em `backend/internal/database/migrations/migrations.go` — depends: T001 — aceite: banco vazio após migrate tem admin (001) + demo (002); re-run não duplica
+- [X] T005 [US3] Credenciais demo do seed (emails/senhas de professor/aluno) só via env documentado ou defaults de **dev** explícitos — nunca secrets de conta AWS no git — depends: T004 — aceite: SC-010 localmente (login admin + ≥1 curso); senhas demo citáveis no guia local/README curto se necessário
+- [X] T006 [P] [US3] Confirmar `frontend/src/api/client.ts` e `frontend/Dockerfile` aceitam `VITE_API_URL` por build-arg/env (rebuild por “sessão” local = mudar env e rebuild) — depends: T003 — aceite: build com `VITE_API_URL` diferente embute a URL no bundle
+- [X] T007 [US3] Ajustar `docker-compose.yml` (e `Makefile` se necessário) para passar `DATABASE_URL`, `JWT_*`, `CORS_ORIGIN`, `ADMIN_*` ao serviço da API — depends: T001, T004 — aceite: `docker compose up` sobe API + Postgres; migrate/seed rodam na subida
+- [X] T008 [US3] Se T004/T005 alterarem comportamento testável da API/seed, adicionar/atualizar testes Go relevantes (ex. `backend/internal/database/...` ou handler smoke já existente); senão documentar N/A no PR/resumo do chat — depends: T004 — aceite: constitution V respeitada; `go test ./...` verde
+- [X] T009 [US3] Garantir CI em `.github/workflows/ci.yml` cobre o branch da feature (push/PR) com jobs backend test+build, frontend build, docker build — depends: T008 — aceite: SC-005 verificável no branch `001-aws-mvp-terraform`
+- [X] T010 [US3] Verificação manual local: compose up → login 3 perfis → listar cursos; rodar `cd backend && go test ./...` e `cd frontend && npm ci && npm run build` — depends: T007, T009 — aceite: checklist Done da Fase A abaixo
 
 ### Done — Fase A (obrigatório antes do Chat 2)
 
-- [ ] `docker compose` sobe API + DB sem erro fatal de migrate/seed
-- [ ] Login admin, professor e aluno (seed) funciona
-- [ ] Listagem mostra ≥1 curso de exemplo (SC-010 local)
-- [ ] `CORS_ORIGIN` / `VITE_API_URL` configuráveis por env (sem hardcode de hostname AWS)
-- [ ] `go test ./...` e build frontend passam; CI do branch verde ou equivalente local documentado
-- [ ] **Nenhum** recurso AWS criado neste chat
+- [X] `docker compose` sobe API + DB sem erro fatal de migrate/seed
+- [X] Login admin, professor e aluno (seed) funciona
+- [X] Listagem mostra ≥1 curso de exemplo (SC-010 local)
+- [X] `CORS_ORIGIN` / `VITE_API_URL` configuráveis por env (sem hardcode de hostname AWS)
+- [X] `go test ./...` e build frontend passam; CI do branch verde ou equivalente local documentado
+- [X] **Nenhum** recurso AWS criado neste chat
 
 **Checkpoint**: Baseline US3 pronta. Parar. Abrir novo chat só para Fase B.
 
@@ -89,25 +89,25 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T011 [US2] Criar skeleton `infra/` flat: `providers.tf` (AWS `us-east-1`), `versions.tf` (Terraform ≥ 1.5), `variables.tf`, `outputs.tf`, `main.tf` (ou split por arquivo lógico sem modules/) — depends: Fase A Done — aceite: `terraform init` funciona; região fixa `us-east-1` (FR-015)
-- [ ] T012 [P] [US2] Adicionar `infra/.gitignore` (ou entradas na raiz `.gitignore`) para `*.tfstate*`, `.terraform/`, `*.tfvars` sensíveis — depends: T011 — aceite: state local não versionado (research §8)
-- [ ] T013 [US2] Declarar VPC custom + Internet Gateway + **2 subnets públicas** (2 AZs) em `infra/vpc.tf` (ou `main.tf`) — **sem NAT Gateway** — depends: T011 — aceite: plan mostra VPC/subnets/IGW; zero NAT
-- [ ] T014 [US2] Security groups base em `infra/sg.tf`: SG placeholder para futuros ALB/tasks/RDS (regras mínimas; RDS ainda não criado) — depends: T013 — aceite: SGs referenciam a VPC; sem abrir 0.0.0.0/0 no Postgres prematuramente sem necessidade
-- [ ] T015 [P] [US2] Variáveis sensíveis e de projeto em `infra/variables.tf` (`project_name`, `admin_email`, senhas/JWT via TF_VAR / tfvars gitignored) — depends: T011 — aceite: defaults seguros só para não-secrets; secrets sem default commitado
-- [ ] T016 [US2] Parâmetros SSM Parameter Store (SecureString/String) em `infra/ssm.tf` para `JWT_SECRET`, `ADMIN_PASSWORD`, placeholders de `DATABASE_URL`/senha DB, `ADMIN_EMAIL`, `CORS_ORIGIN` conforme [contracts/api-env.md](./contracts/api-env.md) — depends: T015 — aceite: params com prefixo do projeto; valores sensíveis SecureString
-- [ ] T017 [US2] AWS Budget (ou billing alert) com limiar baixo (ex. US$ 5) + notificação — preferir recurso **fora do destroy da demo** (`infra/budget.tf` com lifecycle / stack separada documentada) — depends: T011 — aceite: FR-022 / SC-012 caminho claro; budget **não** some no destroy da stack de demo
-- [ ] T018 [US2] Outputs mínimos em `infra/outputs.tf`: `aws_region`, IDs de VPC/subnets/SGs/SSM names úteis; stubs ou TODOs comentados para outputs futuros do contrato — depends: T013, T016 — aceite: `terraform output` lista região + rede; ainda **sem** exigir `frontend_url`/`api_url` reais
-- [ ] T019 [US2] Rodar `terraform validate` e `terraform plan` em `infra/`; anotar resultado no resumo do chat (apply **opcional** e só se seguro/credenciais OK) — depends: T017, T018 — aceite: validate OK; plan sem erros; **app ainda não no ar é OK**
+- [X] T011 [US2] Criar skeleton `infra/` flat: `providers.tf` (AWS `us-east-1`), `versions.tf` (Terraform ≥ 1.5), `variables.tf`, `outputs.tf`, `main.tf` (ou split por arquivo lógico sem modules/) — depends: Fase A Done — aceite: `terraform init` funciona; região fixa `us-east-1` (FR-015)
+- [X] T012 [P] [US2] Adicionar `infra/.gitignore` (ou entradas na raiz `.gitignore`) para `*.tfstate*`, `.terraform/`, `*.tfvars` sensíveis — depends: T011 — aceite: state local não versionado (research §8)
+- [X] T013 [US2] Declarar VPC custom + Internet Gateway + **2 subnets públicas** (2 AZs) em `infra/vpc.tf` (ou `main.tf`) — **sem NAT Gateway** — depends: T011 — aceite: plan mostra VPC/subnets/IGW; zero NAT
+- [X] T014 [US2] Security groups base em `infra/sg.tf`: SG placeholder para futuros ALB/tasks/RDS (regras mínimas; RDS ainda não criado) — depends: T013 — aceite: SGs referenciam a VPC; sem abrir 0.0.0.0/0 no Postgres prematuramente sem necessidade
+- [X] T015 [P] [US2] Variáveis sensíveis e de projeto em `infra/variables.tf` (`project_name`, `admin_email`, senhas/JWT via TF_VAR / tfvars gitignored) — depends: T011 — aceite: defaults seguros só para não-secrets; secrets sem default commitado
+- [X] T016 [US2] Parâmetros SSM Parameter Store (SecureString/String) em `infra/ssm.tf` para `JWT_SECRET`, `ADMIN_PASSWORD`, placeholders de `DATABASE_URL`/senha DB, `ADMIN_EMAIL`, `CORS_ORIGIN` conforme [contracts/api-env.md](./contracts/api-env.md) — depends: T015 — aceite: params com prefixo do projeto; valores sensíveis SecureString
+- [X] T017 [US2] AWS Budget (ou billing alert) com limiar baixo (ex. US$ 5) + notificação — preferir recurso **fora do destroy da demo** (`infra/budget.tf` com lifecycle / stack separada documentada) — depends: T011 — aceite: FR-022 / SC-012 caminho claro; budget **não** some no destroy da stack de demo
+- [X] T018 [US2] Outputs mínimos em `infra/outputs.tf`: `aws_region`, IDs de VPC/subnets/SGs/SSM names úteis; stubs ou TODOs comentados para outputs futuros do contrato — depends: T013, T016 — aceite: `terraform output` lista região + rede; ainda **sem** exigir `frontend_url`/`api_url` reais
+- [X] T019 [US2] Rodar `terraform validate` e `terraform plan` em `infra/`; anotar resultado no resumo do chat (apply **opcional** e só se seguro/credenciais OK) — depends: T017, T018 — aceite: validate OK; plan sem erros; **app ainda não no ar é OK**
 
 ### Done — Fase B (obrigatório antes do Chat 3)
 
-- [ ] `infra/` existe, flat, sem modules elaborados
-- [ ] VPC 2 AZ públicas + IGW; **sem** NAT no plan
-- [ ] SSM params do projeto declarados
-- [ ] Budget/alerta configurável e separado do ciclo destroy da demo
-- [ ] `terraform validate` OK; `plan` documentado no chat
-- [ ] Sem ECS/RDS/ECR/S3/CloudFront/ALB neste chat (ou apenas refs/SG placeholders)
-- [ ] Sem publish de imagem/front
+- [X] `infra/` existe, flat, sem modules elaborados
+- [X] VPC 2 AZ públicas + IGW; **sem** NAT no plan
+- [X] SSM params do projeto declarados
+- [X] Budget/alerta configurável e separado do ciclo destroy da demo
+- [X] `terraform validate` OK; `plan` documentado no chat
+- [X] Sem ECS/RDS/ECR/S3/CloudFront/ALB neste chat (ou apenas refs/SG placeholders)
+- [X] Sem publish de imagem/front
 
 **Checkpoint**: Fundação US2 (rede/segredos/budget). Parar. Abrir novo chat só para Fase C.
 
@@ -122,25 +122,25 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T020 [US2] RDS PostgreSQL `db.t4g.micro` single-AZ em subnet pública, SG só a partir da SG das tasks; `skip_final_snapshot = true`; senha → SSM/`DATABASE_URL` — depends: Fase B Done — aceite: FR-007; sem ElastiCache (FR-008)
-- [ ] T021 [P] [US2] Repositório ECR (`force_delete = true`) em `infra/ecr.tf` — depends: Fase B Done — aceite: output futuro `ecr_repository_url`; destroy limpa imagens
-- [ ] T022 [US2] ALB (público) + target group porta 8080 + listener HTTP :80 em `infra/alb.tf` — depends: T013/T014 (Fase B) — aceite: ALB em ≥2 AZs; DNS em output `alb_dns_name`
-- [ ] T023 [US2] IAM roles de execução/tarefa ECS com `ssm:GetParameters` + decrypt KMS + awslogs + pull ECR em `infra/iam.tf` — depends: T016, T021 — aceite: task pode ler secrets SSM
-- [ ] T024 [US2] Cluster ECS Fargate + task definition (256 CPU / 512 MiB, **linux/ARM64**) + service `desired_count = 1`, `assign_public_ip = true`, awslogs — depends: T020, T021, T022, T023 — aceite: research §3; sem NAT; imagem placeholder ou ECR empty OK até D
-- [ ] T025 [P] [US2] S3 bucket site (private) + OAC em `infra/s3.tf` — depends: Fase B Done — aceite: bucket versionável no destroy; sem website público direto sem CF
-- [ ] T026 [US2] CloudFront **frontend** (origin S3/OAC, cert default `*.cloudfront.net`) em `infra/cloudfront_frontend.tf` — depends: T025 — aceite: output `frontend_url` HTTPS
-- [ ] T027 [US2] CloudFront **API** (origin ALB HTTP) para TLS sem domínio custom — depends: T022 — aceite: output `api_url` HTTPS; evita mixed content (research §5)
-- [ ] T028 [US2] Wire env/secrets na task definition: `PORT`, `DATABASE_URL`, `JWT_*`, `ADMIN_*`, `CORS_ORIGIN` (atualizável pós-front) — depends: T024, T027 — aceite: contrato api-env; fail loud se secret ausente
-- [ ] T029 [US2] Completar `infra/outputs.tf` com **todos** os outputs obrigatórios do contrato terraform-outputs — depends: T020–T027 — aceite: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_*`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, `rds_endpoint`, `aws_region`, `alb_dns_name`
-- [ ] T030 [US2] `terraform validate` + `apply` (conta demo); confirmar recursos na console; **não** exigir `/health` 200 ainda — depends: T029 — aceite: SC-001 parcial (infra up); SC-002 re-plan idempotente sem clique manual
+- [X] T020 [US2] RDS PostgreSQL `db.t4g.micro` single-AZ em subnet pública, SG só a partir da SG das tasks; `skip_final_snapshot = true`; senha → SSM/`DATABASE_URL` — depends: Fase B Done — aceite: FR-007; sem ElastiCache (FR-008)
+- [X] T021 [P] [US2] Repositório ECR (`force_delete = true`) em `infra/ecr.tf` — depends: Fase B Done — aceite: output futuro `ecr_repository_url`; destroy limpa imagens
+- [X] T022 [US2] ALB (público) + target group porta 8080 + listener HTTP :80 em `infra/alb.tf` — depends: T013/T014 (Fase B) — aceite: ALB em ≥2 AZs; DNS em output `alb_dns_name`
+- [X] T023 [US2] IAM roles de execução/tarefa ECS com `ssm:GetParameters` + decrypt KMS + awslogs + pull ECR em `infra/iam.tf` — depends: T016, T021 — aceite: task pode ler secrets SSM
+- [X] T024 [US2] Cluster ECS Fargate + task definition (256 CPU / 512 MiB, **linux/ARM64**) + service `desired_count = 1`, `assign_public_ip = true`, awslogs — depends: T020, T021, T022, T023 — aceite: research §3; sem NAT; imagem placeholder ou ECR empty OK até D
+- [X] T025 [P] [US2] S3 bucket site (private) + OAC em `infra/s3.tf` — depends: Fase B Done — aceite: bucket versionável no destroy; sem website público direto sem CF
+- [X] T026 [US2] CloudFront **frontend** (origin S3/OAC, cert default `*.cloudfront.net`) em `infra/cloudfront_frontend.tf` — depends: T025 — aceite: output `frontend_url` HTTPS
+- [X] T027 [US2] CloudFront **API** (origin ALB HTTP) para TLS sem domínio custom — depends: T022 — aceite: output `api_url` HTTPS; evita mixed content (research §5)
+- [X] T028 [US2] Wire env/secrets na task definition: `PORT`, `DATABASE_URL`, `JWT_*`, `ADMIN_*`, `CORS_ORIGIN` (atualizável pós-front) — depends: T024, T027 — aceite: contrato api-env; fail loud se secret ausente
+- [X] T029 [US2] Completar `infra/outputs.tf` com **todos** os outputs obrigatórios do contrato terraform-outputs — depends: T020–T027 — aceite: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, `rds_endpoint`, `aws_region`, `alb_dns_name`
+- [X] T030 [US2] `terraform validate` + `apply` (conta demo); confirmar recursos na console; **não** exigir `/health` 200 ainda — depends: T029 — aceite: SC-001 parcial (infra up); SC-002 re-plan idempotente sem clique manual
 
 ### Done — Fase C (obrigatório antes do Chat 4)
 
-- [ ] `terraform apply` concluiu sem erro
-- [ ] Outputs do contrato presentes e HTTPS onde aplicável
-- [ ] Sem NAT Gateway; Fargate ARM 256/512; RDS micro; SSM; CF×2 + S3 + ALB + ECS + ECR
-- [ ] Budget da conta ainda ativo (não destruído)
-- [ ] **Nenhum** push de imagem de app nem sync do `frontend/dist` neste chat (OK se task unhealthy por falta de imagem)
+- [X] `terraform apply` concluiu sem erro
+- [X] Outputs do contrato presentes e HTTPS onde aplicável
+- [X] Sem NAT Gateway; Fargate ARM 256/512; RDS micro; SSM; CF×2 + S3 + ALB + ECS + ECR
+- [X] Budget da conta ainda ativo (não destruído)
+- [X] **Nenhum** push de imagem de app nem sync do `frontend/dist` neste chat (OK se task unhealthy por falta de imagem)
 
 **Checkpoint**: IaC US2 completa. Parar. Abrir novo chat só para Fase D.
 
@@ -155,23 +155,23 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T031 [US1] Script ou passos documentados curtos para login ECR + `docker build --platform linux/arm64` a partir de `backend/` + tag/push `:latest` — depends: Fase C Done — aceite: imagem no `ecr_repository_url` (research §4)
-- [ ] T032 [US1] Ajustar `backend/Dockerfile` se necessário para build ARM64/runtime compatível com Fargate 512 MiB — depends: T031 — aceite: container sobe na task sem OOM imediato no boot
-- [ ] T033 [US1] Setar/atualizar `CORS_ORIGIN` (SSM/env) = origem de `frontend_url` e `aws ecs update-service --force-new-deployment` — depends: T031, outputs Fase C — aceite: task nova puxa imagem; eventualmente healthy
-- [ ] T034 [US1] Esperar estabilização: `GET {api_url}/health` → 200; migrate/seed nos logs CloudWatch sem fatal — depends: T033 — aceite: API HTTPS da sessão responde
-- [ ] T035 [US1] Build frontend: `VITE_API_URL={api_url}` → `npm run build` em `frontend/` conforme [contracts/frontend-publish.md](./contracts/frontend-publish.md) — depends: T034 — aceite: bundle aponta só para API desta sessão
-- [ ] T036 [US1] `aws s3 sync frontend/dist/` → `s3_bucket_name` + invalidação CloudFront (`cloudfront_frontend_distribution_id`, paths `/*`) — depends: T035 — aceite: `frontend_url` serve a SPA nova
-- [ ] T037 [US1] Verificação SC-010: login admin seed + listar ≥1 curso via API/UI — depends: T034, T036 — aceite: sem cadastro manual
-- [ ] T038 [US1] Verificação SC-011 + RBAC amostral (professor/aluno) na UI hospedada — depends: T037 — aceite: SC-003/SC-004 amostral; front↔API mesma sessão
+- [X] T031 [US1] Script ou passos documentados curtos para login ECR + `docker build --platform linux/arm64` a partir de `backend/` + tag/push `:latest` — depends: Fase C Done — aceite: imagem no `ecr_repository_url` (research §4)
+- [X] T032 [US1] Ajustar `backend/Dockerfile` se necessário para build ARM64/runtime compatível com Fargate 512 MiB — depends: T031 — aceite: container sobe na task sem OOM imediato no boot
+- [X] T033 [US1] Setar/atualizar `CORS_ORIGIN` (SSM/env) = origem de `frontend_url` e `aws ecs update-service --force-new-deployment` — depends: T031, outputs Fase C — aceite: task nova puxa imagem; eventualmente healthy
+- [X] T034 [US1] Esperar estabilização: `GET {api_url}/health` → 200; migrate/seed nos logs CloudWatch sem fatal — depends: T033 — aceite: API HTTPS da sessão responde
+- [X] T035 [US1] Build frontend: `VITE_API_URL={api_url}` → `npm run build` em `frontend/` conforme [contracts/frontend-publish.md](./contracts/frontend-publish.md) — depends: T034 — aceite: bundle aponta só para API desta sessão
+- [X] T036 [US1] `aws s3 sync frontend/dist/` → `s3_bucket_name` + invalidação CloudFront (`cloudfront_frontend_distribution_id`, paths `/*`) — depends: T035 — aceite: `frontend_url` serve a SPA nova
+- [X] T037 [US1] Verificação SC-010: login admin seed + listar ≥1 curso via API/UI — depends: T034, T036 — aceite: sem cadastro manual
+- [X] T038 [US1] Verificação SC-011 + RBAC amostral (professor/aluno) na UI hospedada — depends: T037 — aceite: SC-003/SC-004 amostral; front↔API mesma sessão
 
 ### Done — Fase D (obrigatório antes do Chat 5)
 
-- [ ] `{api_url}/health` = 200 (HTTPS)
-- [ ] `{frontend_url}` carrega SPA e chama `api_url` (sem mixed content / CORS quebrado)
-- [ ] Login admin seed + curso exemplo (SC-010)
-- [ ] Login pela UI hospedada OK (SC-011)
-- [ ] Amostra RBAC (ação permitida + bloqueada em PT) OK
-- [ ] Sem automação CD nem destroy documentado completo neste chat
+- [X] `{api_url}/health` = 200 (HTTPS)
+- [X] `{frontend_url}` carrega SPA e chama `api_url` (sem mixed content / CORS quebrado)
+- [X] Login admin seed + curso exemplo (SC-010)
+- [X] Login pela UI hospedada OK (SC-011)
+- [X] Amostra RBAC (ação permitida + bloqueada em PT) OK
+- [X] Sem automação CD nem destroy documentado completo neste chat
 
 **Checkpoint**: Demo US1 utilizável. Parar. Abrir novo chat só para Fase E.
 
@@ -186,22 +186,22 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T039 [P] Incorporar runbook de [quickstart.md](./quickstart.md) em `README.md` (seção AWS demo) com ordem: billing → apply → push API → CORS → health → rebuild front → warm-up → demo → destroy — depends: Fase D Done — aceite: FR-017; links aos contracts
-- [ ] T040 [P] Atualizar `AGENTS.md` com caminho AWS (ECS/S3/CF, destroy entre sessões, sem NAT, sem Redis AWS, CD=P3) alinhado à constitution — depends: Fase D Done — aceite: agentes não sugerem self-hosted como demo
-- [ ] T041 Estimativa de custo por sessão (~US$ 1–3 / 4 h; ~US$ 0 após destroy) em `README.md` ou `specs/001-aws-mvp-terraform/quickstart.md` — depends: T039 — aceite: SC-006; NAT = US$ 0 explícito
-- [ ] T042 Checklist pós-destroy (console) + resíduos (ECR force_delete, snapshots, log groups, **budget permanece**) no runbook — depends: T039 — aceite: SC-007 ≤ 15 min de procedimento
-- [ ] T043 Documentar limiar do budget/alerta e onde verificar na console (Billing → Budgets) — depends: T017 (já em B), T039 — aceite: SC-012
-- [ ] T044 Documentar gap P2 (automação warm-up) e P3 (CD) como fora do caminho mínimo — depends: T039 — aceite: US4/US5 não confundidos com P1
-- [ ] T045 [P] Revisar ausência de segredos em arquivos rastreados (`.tfvars`, `.env`, state) — depends: T012 — aceite: SC-008
-- [ ] T046 Validar quickstart ponta a ponta contra a última sessão (ou dry-run checklist se destroy já feito) — depends: T039–T044 — aceite: operador não inventa passos
+- [X] T039 [P] Incorporar runbook de [quickstart.md](./quickstart.md) em `README.md` (seção AWS demo) com ordem: billing → apply → push API → CORS → health → rebuild front → warm-up → demo → destroy — depends: Fase D Done — aceite: FR-017; links aos contracts
+- [X] T040 [P] Atualizar `AGENTS.md` com caminho AWS (ECS/S3/CF, destroy entre sessões, sem NAT, sem Redis AWS, CD=P3) alinhado à constitution — depends: Fase D Done — aceite: agentes não sugerem self-hosted como demo
+- [X] T041 Estimativa de custo por sessão (~US$ 1–3 / 4 h; ~US$ 0 após destroy) em `README.md` ou `specs/001-aws-mvp-terraform/quickstart.md` — depends: T039 — aceite: SC-006; NAT = US$ 0 explícito
+- [X] T042 Checklist pós-destroy (console) + resíduos (ECR force_delete, snapshots, log groups, **budget permanece**) no runbook — depends: T039 — aceite: SC-007 ≤ 15 min de procedimento
+- [X] T043 Documentar limiar do budget/alerta e onde verificar na console (Billing → Budgets) — depends: T017 (já em B), T039 — aceite: SC-012
+- [X] T044 Documentar gap P2 (automação warm-up) e P3 (CD) como fora do caminho mínimo — depends: T039 — aceite: US4/US5 não confundidos com P1
+- [X] T045 [P] Revisar ausência de segredos em arquivos rastreados (`.tfvars`, `.env`, state) — depends: T012 — aceite: SC-008
+- [X] T046 Validar quickstart ponta a ponta contra a última sessão (ou dry-run checklist se destroy já feito) — depends: T039–T044 — aceite: operador não inventa passos
 
 ### Done — Fase E (fecha P1)
 
-- [ ] README + AGENTS atualizados
-- [ ] Custo por sessão + destroy + billing alert documentados
-- [ ] Gap P2/P3 explícito
-- [ ] SC-006, SC-007, SC-008, SC-012 endereçados na doc
-- [ ] **P1 completo** — Fases F/G só se desejado
+- [X] README + AGENTS atualizados
+- [X] Custo por sessão + destroy + billing alert documentados
+- [X] Gap P2/P3 explícito
+- [X] SC-006, SC-007, SC-008, SC-012 endereçados na doc
+- [X] **P1 completo** — Fases F/G só se desejado
 
 **Checkpoint**: MVP P1 documentado. Não iniciar F/G no mesmo chat.
 
@@ -217,15 +217,15 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T047 [US4] Decidir e registrar: (a) automação (ex. EventBridge + docs) **ou** (b) gap P2 apenas documentado — depends: Fase E Done — aceite: escolha única no README/quickstart
-- [ ] T048 [US4] Se (a): implementar artefato mínimo de agendamento/warm-up alinhado a desired_count=1 e health check; se (b): expandir checklist T−15 min no quickstart — depends: T047 — aceite: US4 AC3 (doc clara P2 vs entregue)
-- [ ] T049 [US4] Validar ciclo destroy + verificação pós-destroy uma vez com o runbook atualizado — depends: T048 — aceite: SC-007; custo contínuo ~0
+- [X] T047 [US4] Decidir e registrar: (a) automação (ex. EventBridge + docs) **ou** (b) gap P2 apenas documentado — depends: Fase E Done — aceite: escolha única no README/quickstart
+- [X] T048 [US4] Se (a): implementar artefato mínimo de agendamento/warm-up alinhado a desired_count=1 e health check; se (b): expandir checklist T−15 min no quickstart — depends: T047 — aceite: US4 AC3 (doc clara P2 vs entregue)
+- [X] T049 [US4] Validar ciclo destroy + verificação pós-destroy uma vez com o runbook atualizado — depends: T048 — aceite: SC-007; custo contínuo ~0
 
 ### Done — Fase F
 
-- [ ] Automação entregue **ou** gap P2 inequívoco na doc
-- [ ] Ciclo warm-up operacional verificável
-- [ ] Sem CD neste chat
+- [X] Automação entregue **ou** gap P2 inequívoco na doc
+- [X] Ciclo warm-up operacional verificável
+- [X] Sem CD neste chat
 
 ---
 
@@ -239,17 +239,17 @@ description: "Task list — MVP AWS com custo controlado (fases = chats isolados
 
 ### Implementation
 
-- [ ] T050 [US5] Desenhar job(s) CD em `.github/workflows/` (separado ou extendido de `ci.yml`) com secrets AWS — depends: Fase E Done — aceite: CI build+test continua obrigatório e bloqueia deploy
-- [ ] T051 [US5] Job push imagem ARM64 → ECR + force deploy ECS — depends: T050 — aceite: US5 AC1 parcial API
-- [ ] T052 [P] [US5] Job build front com `VITE_API_URL` (secret/var da sessão ou output) + S3 sync + invalidate CF — depends: T050 — aceite: US5 AC1 parcial front (notar URLs efêmeras pós-destroy)
-- [ ] T053 [US5] Garantir que falha de test/build não promove — depends: T051, T052 — aceite: US5 AC2
-- [ ] T054 [US5] Documentar no README: CD opcional vs publish manual P1 — depends: T053 — aceite: caminho manual permanece válido
+- [X] T050 [US5] Desenhar job(s) CD em `.github/workflows/` (separado ou extendido de `ci.yml`) com secrets AWS — depends: Fase E Done — aceite: CI build+test continua obrigatório e bloqueia deploy
+- [X] T051 [US5] Job push imagem ARM64 → ECR + force deploy ECS — depends: T050 — aceite: US5 AC1 parcial API
+- [X] T052 [P] [US5] Job build front com `VITE_API_URL` (secret/var da sessão ou output) + S3 sync + invalidate CF — depends: T050 — aceite: US5 AC1 parcial front (notar URLs efêmeras pós-destroy)
+- [X] T053 [US5] Garantir que falha de test/build não promove — depends: T051, T052 — aceite: US5 AC2
+- [X] T054 [US5] Documentar no README: CD opcional vs publish manual P1 — depends: T053 — aceite: caminho manual permanece válido
 
 ### Done — Fase G
 
-- [ ] CD documentado e, se habilitado, bloqueado por CI vermelho
-- [ ] Publish manual P1 ainda descrito
-- [ ] Sem escopo fora de US5
+- [X] CD documentado e, se habilitado, bloqueado por CI vermelho
+- [X] Publish manual P1 ainda descrito
+- [X] Sem escopo fora de US5
 
 ---
 

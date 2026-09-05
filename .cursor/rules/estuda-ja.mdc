@@ -11,12 +11,18 @@ Leia [AGENTS.md](../../AGENTS.md) para detalhes completos. Regras essenciais:
 EdTech ao vivo (aula magna) + VOD. Pico instantâneo na abertura da aula. Responder em **português**.
 
 ## Stack
-Go/Fiber · Vite/React/TS · PostgreSQL · JWT+bcrypt · ECS (futuro) · CI sem deploy
+Go/Fiber · Vite/React/TS · PostgreSQL · JWT+bcrypt · ECS Fargate + S3/CloudFront (demo AWS) · CI sem CD (CD=P3)
 
 ## Estrutura
 - `backend/internal/handler/` e `repository/` — **um arquivo por domínio** (curso, aula, aluno, user, auth)
 - `frontend/src/auth/` — permissões RBAC na UI
-- `docs/` — slides; raiz só README + DESCRICAO + REQUISITOS
+- `infra/` — Terraform AWS + publish; `infra/budget/` separado do destroy da demo
+- `docs/` — slides; raiz só README + DESCRICAO + REQUISITOS (+ specs/)
+
+## Demo AWS
+- Caminho: AWS gerenciado (não sugerir self-hosted como demo)
+- Sem NAT · sem Redis AWS · destroy entre sessões · budget permanece
+- Runbook: README (Demo AWS) + `specs/001-aws-mvp-terraform/quickstart.md`
 
 ## RBAC
 - **admin**: CRUD tudo + usuários
@@ -27,10 +33,10 @@ Go/Fiber · Vite/React/TS · PostgreSQL · JWT+bcrypt · ECS (futuro) · CI sem 
 Formato BR: `dd/mm/yyyy` ou `dd/mm/yyyy HH:mm` — backend `timeutil`, frontend `utils/date.ts`
 
 ## Fora do escopo (não implementar sem pedir)
-Streaming · Chat WebSocket · Deploy produção · OAuth externo
+Streaming · Chat WebSocket · OAuth externo · EventBridge warm-up (P2) · CD Actions (P3)
 
 ## Código
 Escopo mínimo · seguir convenções existentes · erros API em português · testes Go ao alterar handlers
 
 ## Git
-Commitar **somente** se o usuário pedir. Não commitar secrets nem builds.
+Commitar **somente** se o usuário pedir. Não commitar secrets, `*.tfvars`, state Terraform nem builds.

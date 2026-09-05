@@ -6,6 +6,7 @@ infra-up:
 infra-down:
 	docker compose down
 
+# API lê env (PORT, DATABASE_URL, CORS_ORIGIN, JWT_*, ADMIN_*, DEMO_*). Ver backend/.env.example.
 backend:
 	cd backend && go run ./cmd/api
 

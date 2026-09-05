@@ -1,0 +1,194 @@
+# CD opcional (P3 / US5) — publish API + frontend na demo AWS.
+# Pré: terraform apply na conta; secrets/vars da sessão configurados (URLs efêmeras).
+# CI (.github/workflows/ci.yml) permanece obrigatório em todo push/PR.
+# Deploy SÓ roda se o quality gate deste workflow passar (T053: vermelho não promove)
+# e se a variável de repositório AWS_CD_ENABLED == 'true'.
+#
+# Caminho manual P1 (infra/publish-*.ps1) continua válido e preferido quando a
+# stack está destruída ou os secrets da sessão estão desatualizados.
+
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: cd-aws-demo
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  # --- Quality gate (T050 / T053): falha aqui → deploy não roda ---
+  # Roda se CD estiver habilitado ou em dispatch manual (testar o gate sem publicar).
+  backend:
+    if: vars.AWS_CD_ENABLED == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Build backend
+        working-directory: backend
+        run: go build -o /tmp/api ./cmd/api
+
+  frontend:
+    if: vars.AWS_CD_ENABLED == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  # --- T051: imagem linux/arm64 → ECR + force deploy ECS ---
+  # needs = T053: se backend/frontend falhar, estes jobs não rodam (não promove).
+  deploy-api:
+    needs: [backend, frontend]
+    if: |
+      vars.AWS_CD_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require session secrets
+        env:
+          ECR_REPOSITORY_URL: ${{ secrets.ECR_REPOSITORY_URL }}
+          ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ secrets.ECS_SERVICE_NAME }}
+        run: |
+          missing=
+          [ -n "$ECR_REPOSITORY_URL" ] || missing="$missing ECR_REPOSITORY_URL"
+          [ -n "$ECS_CLUSTER_NAME" ] || missing="$missing ECS_CLUSTER_NAME"
+          [ -n "$ECS_SERVICE_NAME" ] || missing="$missing ECS_SERVICE_NAME"
+          if [ -n "$missing" ]; then
+            echo "Secrets ausentes:$missing"
+            echo "Após terraform apply, copie os outputs para os secrets do repositório."
+            echo "URLs/nomes são efêmeros: após destroy, desative AWS_CD_ENABLED."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API (linux/arm64)
+        env:
+          ECR_REPOSITORY_URL: ${{ secrets.ECR_REPOSITORY_URL }}
+        run: |
+          IMAGE="${ECR_REPOSITORY_URL}:latest"
+          docker buildx build \
+            --platform linux/arm64 \
+            -t "$IMAGE" \
+            --push \
+            ./backend
+
+      - name: Force new deployment ECS
+        env:
+          ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ secrets.ECS_SERVICE_NAME }}
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --service "$ECS_SERVICE_NAME" \
+            --force-new-deployment \
+            --region "$AWS_REGION" \
+            --query "service.serviceName" \
+            --output text
+
+  # --- T052: VITE_API_URL → build → S3 sync → invalidate CloudFront ---
+  deploy-frontend:
+    needs: [backend, frontend]
+    if: |
+      vars.AWS_CD_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require session secrets
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          CLOUDFRONT_FRONTEND_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_FRONTEND_DISTRIBUTION_ID }}
+        run: |
+          missing=
+          [ -n "$VITE_API_URL" ] || missing="$missing VITE_API_URL"
+          [ -n "$S3_BUCKET_NAME" ] || missing="$missing S3_BUCKET_NAME"
+          [ -n "$CLOUDFRONT_FRONTEND_DISTRIBUTION_ID" ] || missing="$missing CLOUDFRONT_FRONTEND_DISTRIBUTION_ID"
+          if [ -n "$missing" ]; then
+            echo "Secrets ausentes:$missing"
+            echo "VITE_API_URL = output api_url da sessão (HTTPS CloudFront)."
+            echo "Após destroy, esses valores invalidam — atualize ou desative AWS_CD_ENABLED."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build SPA with session VITE_API_URL
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          # Sem barra final (contrato frontend-publish)
+          export VITE_API_URL="${VITE_API_URL%/}"
+          echo "VITE_API_URL=$VITE_API_URL"
+          npm ci
+          npm run build
+
+      - name: Sync S3 + invalidate CloudFront
+        env:
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          CLOUDFRONT_FRONTEND_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_FRONTEND_DISTRIBUTION_ID }}
+        run: |
+          aws s3 sync frontend/dist/ "s3://${S3_BUCKET_NAME}/" --delete --region "$AWS_REGION"
+          aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_FRONTEND_DISTRIBUTION_ID" \
+            --paths "/*" \
+            --region "$AWS_REGION" \
+            --query "Invalidation.Id" \
+            --output text

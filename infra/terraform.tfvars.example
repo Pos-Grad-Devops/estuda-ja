@@ -1,0 +1,15 @@
+# Copie para terraform.tfvars (gitignored) ou use TF_VAR_*.
+# Segredos omitidos são gerados no apply (random_password) e ficam no state local.
+
+project_name = "estudaja"
+admin_email  = "admin@estudaja.com"
+
+# cors_origin = "https://xxxx.cloudfront.net"  # default = URL do CloudFront front
+# jwt_secret     = "troque-me"
+# admin_password = "troque-me"
+# db_password    = "troque-me"
+# database_url   = "postgres://estudaja:...@rds-host:5432/estudaja?sslmode=require"
+# db_instance_class = "db.t4g.micro"
+# fargate_cpu       = "256"
+# fargate_memory    = "512"
+# ecs_desired_count = 1

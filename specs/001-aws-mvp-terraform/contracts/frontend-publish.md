@@ -44,6 +44,9 @@ aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
 
 ## Fora deste contrato
 
-- CD automatizado (P3)
 - Domínio customizado
 - Reutilização de `VITE_API_URL` entre destroys
+
+## CD (P3 opcional)
+
+O mesmo contrato aplica-se ao job `deploy-frontend` em `.github/workflows/cd.yml` (`VITE_API_URL` via secret = `api_url` da sessão). Publish manual (`infra/publish-frontend.ps1`) permanece equivalente e válido. Após destroy, atualize ou desative o CD — URLs são efêmeras.

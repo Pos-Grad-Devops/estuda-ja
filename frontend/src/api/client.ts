@@ -1,6 +1,7 @@
 import { getToken } from '../auth/auth'
 import type { Role, User } from '../auth/auth'
 
+// VITE_API_URL é embutido no build (Vite). Mudar a sessão = alterar env e rebuild.
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 export type Curso = {

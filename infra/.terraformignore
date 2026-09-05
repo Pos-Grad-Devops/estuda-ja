@@ -1,0 +1,12 @@
+.git/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+*_override.tf
+.env
+.env.*
+.terraform.lock.hcl

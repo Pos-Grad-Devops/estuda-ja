@@ -18,5 +18,10 @@ func All(cfg config.Config) []*gormigrate.Migration {
 			Migrate:  seedAdmin(cfg),
 			Rollback: rollbackAdmin(cfg),
 		},
+		{
+			ID:       "002_seed_demo",
+			Migrate:  seedDemo(cfg),
+			Rollback: rollbackDemo(cfg),
+		},
 	}
 }

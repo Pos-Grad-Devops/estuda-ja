@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+# Rebuild da imagem ao mudar a URL da sessão (VITE_API_URL é embutido no bundle).
 ARG VITE_API_URL=http://localhost:8080
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build

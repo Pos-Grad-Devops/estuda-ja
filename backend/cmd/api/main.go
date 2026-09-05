@@ -39,7 +39,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: cfg.CORSOrigin,
+		AllowOrigins: cfg.CORSOrigin, // origem única via CORS_ORIGIN (sem lista hardcoded)
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 

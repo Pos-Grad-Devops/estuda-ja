@@ -17,7 +17,9 @@
 estuda-ja/
 ├── backend/          # API Go (Fiber) + PostgreSQL
 ├── frontend/         # Vite + React + TypeScript
+├── infra/            # Terraform AWS (demo efêmera) + scripts de publish
 ├── docs/             # Apresentação e diagramas
+├── specs/            # Speckit (ex.: 001-aws-mvp-terraform)
 ├── docker-compose.yml
 ├── Makefile
 ├── AGENTS.md         # Guidelines para agentes de IA e devs
@@ -51,10 +53,17 @@ Variáveis padrão:
 | `DATABASE_URL` | `postgres://estudaja:estudaja@localhost:5432/estudaja?sslmode=disable` |
 | `CORS_ORIGIN` | `http://localhost:5173` |
 | `JWT_SECRET` | `dev-secret-change-me` |
+| `JWT_EXPIRATION` | `24h` |
 | `ADMIN_EMAIL` | `admin@estudaja.com` |
 | `ADMIN_PASSWORD` | `admin123` |
+| `DEMO_PROFESSOR_EMAIL` | `professor@estudaja.com` |
+| `DEMO_PROFESSOR_PASSWORD` | `professor123` |
+| `DEMO_ALUNO_EMAIL` | `aluno@estudaja.com` |
+| `DEMO_ALUNO_PASSWORD` | `aluno123` |
 
-Credenciais padrão do admin inicial (criado automaticamente se não existir).
+Lista completa em `backend/.env.example`. Frontend: `VITE_API_URL` (ver `frontend/.env.example`; rebuild ao mudar).
+
+Seed automático na subida da API: admin (`001`) + professor/aluno + 1 curso + 1 aula (`002`). Defaults acima são só de **dev** local.
 
 ### Autenticação e permissões
 
@@ -92,7 +101,7 @@ npm install
 npm run dev
 ```
 
-Acesse http://localhost:5173 e entre com o admin padrão ou um usuário criado pelo admin.
+Acesse http://localhost:5173. Logins de demo (seed): admin, professor ou aluno (credenciais na tabela acima).
 
 ### Stack completa com Docker
 
@@ -110,13 +119,165 @@ docker compose up --build
 make test
 ```
 
-Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e build das imagens Docker. **Deploy fica para uma etapa posterior.**
+Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e build das imagens Docker. Publish AWS da demo no caminho mínimo = **manual** (seção abaixo). CD opcional (P3) = `.github/workflows/cd.yml` — ver subseção **CD opcional (P3)**.
 
-### Fora do escopo atual
+### Fora do escopo atual (produto)
 
 - Streaming ao vivo
 - Chat WebSocket
-- Deploy / hospedagem
+- OAuth externo
+- Redis/ElastiCache na AWS
+- Domínio customizado
+- Automação EventBridge de apply/destroy (P2)
+
+---
+
+## Demo AWS (MVP P1)
+
+Caminho oficial de hospedagem acadêmica: **AWS gerenciado** via Terraform em `infra/` (sem NAT Gateway, sem Redis AWS). Self-hosted **não** é o destino da demo — Compose fica só para desenvolvimento local.
+
+Runbook completo e critérios de sucesso: [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md).  
+Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md).
+
+**Ordem fixa da sessão** (não pular passos):
+
+1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** → 8. **Demo** → 9. **Destroy**
+
+### 0. Alerta de billing (uma vez por conta)
+
+Antes da primeira demo (FR-022 / SC-012):
+
+```bash
+cd infra/budget
+cp terraform.tfvars.example terraform.tfvars   # edite notification_email
+terraform init && terraform apply
+```
+
+| Item | Valor |
+|------|--------|
+| Limiar mensal padrão | **US$ 5** (`budget_limit_usd`) |
+| Alerta ACTUAL | **80%** do limiar (`threshold_percent`) |
+| Alerta FORECASTED | 100% |
+| Console | **Billing → Budgets** (confirmar nome `estudaja-…` e e-mail) |
+
+Esta stack é **separada**. `terraform destroy` em `infra/` **não** remove o budget — ele deve permanecer na conta.
+
+### 1. Apply (infra da demo)
+
+```bash
+cd infra
+cp terraform.tfvars.example terraform.tfvars   # opcional; segredos omitidos são gerados no apply
+terraform init
+terraform apply
+```
+
+Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `ecr_repository_url`, `ecs_cluster_name`, `ecs_service_name`, `s3_bucket_name`, `cloudfront_frontend_distribution_id`, etc. (contrato terraform-outputs).
+
+`CORS_ORIGIN` no SSM é preenchido automaticamente com a origem HTTPS do CloudFront do frontend (salvo override em `cors_origin`).
+
+### 2–5. Publish API → CORS → health → front
+
+Scripts (PowerShell, a partir de `infra/`):
+
+```powershell
+.\publish-api.ps1          # build linux/arm64 → ECR :latest → force deploy ECS
+# Aguardar: GET {api_url}/health → 200 (HTTPS CloudFront da API)
+.\publish-frontend.ps1     # VITE_API_URL={api_url} → npm build → S3 sync → invalidate CF
+```
+
+Equivalente manual: ver quickstart §§2–3 e contrato frontend-publish. Se alterar `CORS_ORIGIN` depois do apply, atualize o parâmetro SSM e force novo deploy da task.
+
+**Este caminho manual P1 permanece o runbook oficial** e funciona com ou sem CD habilitado.
+
+### CD opcional (P3)
+
+Workflow: [`.github/workflows/cd.yml`](./.github/workflows/cd.yml). Espelha `publish-api.ps1` / `publish-frontend.ps1` no Actions (ARM64→ECR+ECS e front com `VITE_API_URL`→S3+invalidate CF).
+
+| Item | Detalhe |
+|------|---------|
+| Gate | Jobs `backend` + `frontend` (test/build) **obrigatórios**; se falharem, `deploy-api` / `deploy-frontend` **não rodam** (CI vermelho não promove) |
+| Habilitar | Variável de repositório `AWS_CD_ENABLED` = `true` (sem isso, só o gate roda; nada é publicado) |
+| Triggers | `workflow_dispatch` ou `push` em `main` |
+| Credenciais | Secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| Sessão (efêmera) | Secrets preenchidos com **outputs do apply atual** (ver tabela abaixo) |
+
+Secrets / vars da sessão (atualizar após **cada** `terraform apply`; invalidam após `destroy`):
+
+| Secret / var | Origem (output TF) |
+|--------------|-------------------|
+| `ECR_REPOSITORY_URL` | `ecr_repository_url` |
+| `ECS_CLUSTER_NAME` | `ecs_cluster_name` |
+| `ECS_SERVICE_NAME` | `ecs_service_name` |
+| `VITE_API_URL` | `api_url` (HTTPS, sem barra final) |
+| `S3_BUCKET_NAME` | `s3_bucket_name` |
+| `CLOUDFRONT_FRONTEND_DISTRIBUTION_ID` | `cloudfront_frontend_distribution_id` |
+| `AWS_REGION` (var, opcional) | default `us-east-1` |
+
+Após `terraform destroy`: desative `AWS_CD_ENABLED` (ou limpe os secrets). Não reutilize `VITE_API_URL` / bucket / distribution de sessão anterior — mixed content, CORS e 404 são sintomas típicos (contrato frontend-publish).
+
+CD **não** substitui apply/destroy nem o warm-up manual. Sem stack ligada, habilitar CD só gera falha nos jobs de deploy.
+
+### 6–7. Warm-up e demo (manual — Fase F / escolha b)
+
+**Decisão P2 (única):** manter **gap** de automação EventBridge/agendamento na nuvem. Warm-up = procedimento **manual** reforçado (não há jobs EventBridge neste repo). Detalhe completo: [quickstart §4](./specs/001-aws-mvp-terraform/quickstart.md).
+
+Warm-up **não** é scale-from-zero: stack ligada, `desired_count = 1`, task running, `/health` estável. Antecedência: **T−15 min** antes da janela (RDS cold + primeiro migrate).
+
+Checklist T−15 min (resumo — marcar na ordem):
+
+| Momento | Verificar |
+|---------|-----------|
+| **T−15** | Apply ok; RDS available; ECS `desired_count = 1` + task RUNNING; targets healthy |
+| **T−10** | `GET {api_url}/health` = **200** estável (2–3 chamadas) |
+| **T−5** | Login admin + ≥1 curso (SC-010); UI em `{frontend_url}` (SC-011); amostra RBAC |
+| **T−0** | Não zerar `desired_count`; destroy só após o encerramento |
+
+Pular o warm-up = risco de cold start na abertura — inadequado para demo de pico.
+
+Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / aluno — ver tabela em Desenvolvimento.
+
+### 8. Destroy (entre sessões)
+
+```bash
+cd infra
+terraform destroy
+```
+
+**Não** rode destroy em `infra/budget/`. Após o destroy da demo (procedimento ≤ 15 min — SC-007):
+
+| Verificar na console | Esperado |
+|----------------------|----------|
+| ECS, ALB, RDS, CloudFront ×2, S3 site, VPC/SG do projeto | Ausentes |
+| NAT Gateway | **Nenhum** (nunca provisionado → custo NAT = US$ 0) |
+| ECR | Removido (`force_delete = true`) |
+| Snapshots RDS | Nenhum (`skip_final_snapshot = true`) |
+| Log groups órfãos | Apagar se restarem fora do TF |
+| **Billing → Budgets** | Budget **ainda ativo** |
+
+Resíduos e detalhes: [research.md §10](./specs/001-aws-mvp-terraform/research.md).
+
+### Custo por sessão (ordem de grandeza)
+
+| Cenário | Estimativa |
+|---------|------------|
+| Sessão ~4 h ligada (sem Free Tier) | **~US$ 1–3** |
+| Mesma janela com Free Tier RDS/ALB elegível | **~US$ 0–1** |
+| Após destroy completo da stack de demo | **~US$ 0** (ALB/RDS/Fargate/CF) |
+| NAT Gateway | **US$ 0** (não existe neste MVP) |
+
+Dominantes com stack ligada: ALB (~US$ 0,02–0,03/h), RDS `db.t4g.micro`, Fargate 256/512 ARM. Números são guia — conferir Pricing Calculator na data da demo ([research §9](./specs/001-aws-mvp-terraform/research.md)).
+
+### Gaps explícitos (não confundir com P1)
+
+| Prioridade | Item | Status no caminho mínimo |
+|------------|------|---------------------------|
+| **P1** | IaC + publish manual + destroy + docs | Entregue |
+| **P2** | Automação warm-up / EventBridge apply–destroy | **Gap (Fase F / escolha b)** — checklist T−15 min reforçado; sem EventBridge |
+| **P3** | CD no GitHub Actions (ECR + S3/CF) | **Opcional entregue** (`.github/workflows/cd.yml`); publish manual P1 continua válido |
+
+### Segredos e state
+
+Não versionar: `*.tfvars` (exceto `*.tfvars.example`), `*.tfstate*`, `.terraform/`, `.env`. Secrets da sessão ficam no state local e no SSM — nunca no git (SC-008).
 
 ---
 
@@ -387,14 +548,17 @@ cd docs && npm run slides:html
 | [docs/slides/diagrams/](./docs/slides/diagrams/) | Diagramas Mermaid (fonte `.mmd` e SVG) |
 | [docs/package.json](./docs/package.json) | Scripts para gerar diagramas e exportar slides |
 | [AGENTS.md](./AGENTS.md) | Guidelines e contexto para desenvolvimento (IA e equipe) |
+| [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md) | Runbook operacional da sessão AWS |
+| [specs/001-aws-mvp-terraform/](./specs/001-aws-mvp-terraform/) | Spec / plan / tasks / contracts da feature AWS MVP |
 
 ---
 
 ## Próximos passos
 
-- [ ] Streaming ao vivo
-- [ ] Chat WebSocket
-- [ ] Deploy (hospedagem a definir)
+- [x] Demo AWS efêmera (Terraform + publish manual) — P1
+- [x] Warm-up P2: **gap documentado** (escolha b) + checklist T−15 min — Fase F
+- [x] CD no GitHub Actions — P3 opcional (Fase G; gate por test/build; secrets de sessão)
+- [ ] Streaming ao vivo / chat WebSocket (fora do MVP atual)
 
 ---
 

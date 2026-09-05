@@ -6,4 +6,36 @@ docs/apresentacao.pptx
 frontend/node_modules/
 frontend/dist/
 .env
+.env.*
+!.env.example
+!**/.env.example
 frontend/.env
+backend/.env
+
+# Go
+*.exe
+*.test
+*.out
+vendor/
+
+# Terraform — state local, não versionar (research §8 / T012)
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# OS / temporários
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+.idea/

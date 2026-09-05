@@ -45,7 +45,7 @@ Phase 0 — decisões técnicas restantes (decisões já fechadas na spec **não
 **Alternatives considered:**
 - ECR “bootstrap” fora do destroy — deixa resíduo permanente; rejeitado salvo necessidade.
 - Imagem pública Docker Hub — menos alinhado ao caminho AWS e a segredos/conta acadêmica.
-- CD no GitHub Actions — P3.
+- CD no GitHub Actions — P3 (agora opcional em `.github/workflows/cd.yml`; P1 continua com publish manual).
 
 ## 5. HTTPS nos hostnames AWS (sem domínio customizado)
 
@@ -114,6 +114,12 @@ Componentes dominantes com stack ligada:
 - State local e credenciais AWS na máquina do operador.
 
 **Rationale:** SC-006/SC-007; budget não deve ser destruído junto com a demo.
+
+## 10b. Fase F / P2 — warm-up: gap documentado (escolha b)
+
+**Decision:** **não** implementar EventBridge (nem Lambda/CodeBuild) para apply, health-poll ou destroy. Entregar US4 via checklist operacional T−15 min no [quickstart.md](./quickstart.md) §4 e espelho no README. Automação de agendamento permanece gap explícito.
+
+**Rationale:** constitution I (custo) + III (YAGNI) — agendar Terraform na conta acadêmica acrescenta IAM, runtime e superfície de falha sem ganho na demo pontual; com `desired_count = 1` o warm-up já é “stack ligada + `/health` OK”, não scale-from-zero. Alternativa (a) rejeitada neste MVP.
 
 ## 11. Observabilidade mínima
 

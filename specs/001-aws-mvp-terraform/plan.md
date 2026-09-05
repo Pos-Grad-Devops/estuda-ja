@@ -92,7 +92,8 @@ estuda-ja/
 │   ├── providers.tf
 │   └── ...                  # vpc, ecs, alb, rds, s3, cloudfront, ssm, ecr
 ├── docs/
-├── .github/workflows/ci.yml # CI; CD = P3 futuro
+├── .github/workflows/ci.yml # CI build+test
+├── .github/workflows/cd.yml # CD opcional P3 (gate + ECR/ECS + S3/CF)
 ├── docker-compose.yml
 ├── Makefile
 ├── README.md
@@ -114,6 +115,6 @@ estuda-ja/
 | Design (este comando) | plan, research, data-model, contracts, quickstart | — |
 | P1 | IaC mínima + app configurável + seed demo + publish manual + CI verde + budget + docs | Obrigatório |
 | P2 | Automação/agendamento de warm-up (ou gap documentado) | Desejável |
-| P3 | CD (push imagem + sync S3 a partir do CI) | Opcional |
+| P3 | CD (push imagem + sync S3 a partir do CI) | Opcional — `cd.yml` entregue; manual P1 permanece |
 
 **Próximo comando Speckit:** `/speckit-tasks` (não executar implementação aqui).

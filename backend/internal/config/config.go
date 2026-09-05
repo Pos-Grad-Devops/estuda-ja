@@ -2,9 +2,12 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 )
 
+// Config carrega o runtime da API a partir de env (contrato specs/.../contracts/api-env.md).
+// Defaults abaixo são só para desenvolvimento local — nunca secrets de conta AWS.
 type Config struct {
 	Port          string
 	DatabaseURL   string
@@ -13,6 +16,11 @@ type Config struct {
 	JWTExpiration time.Duration
 	AdminEmail    string
 	AdminPassword string
+
+	DemoProfessorEmail    string
+	DemoProfessorPassword string
+	DemoAlunoEmail        string
+	DemoAlunoPassword     string
 }
 
 func Load() Config {
@@ -24,18 +32,23 @@ func Load() Config {
 		JWTExpiration: getDurationEnv("JWT_EXPIRATION", 24*time.Hour),
 		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@estudaja.com"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
+
+		DemoProfessorEmail:    getEnv("DEMO_PROFESSOR_EMAIL", "professor@estudaja.com"),
+		DemoProfessorPassword: getEnv("DEMO_PROFESSOR_PASSWORD", "professor123"),
+		DemoAlunoEmail:        getEnv("DEMO_ALUNO_EMAIL", "aluno@estudaja.com"),
+		DemoAlunoPassword:     getEnv("DEMO_ALUNO_PASSWORD", "aluno123"),
 	}
 }
 
 func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		return v
 	}
 	return fallback
 }
 
 func getDurationEnv(key string, fallback time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		if parsed, err := time.ParseDuration(v); err == nil {
 			return parsed
 		}
