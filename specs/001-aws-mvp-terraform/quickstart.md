@@ -101,7 +101,7 @@ Warm-up **não** é scale-from-zero: com a stack já aplicada, `desired_count = 
 
 ### Checklist T−15 min (obrigatório antes da janela simulada)
 
-Comece **no máximo 15 minutos antes** do horário combinado (RDS cold + first migrate + propagação CF). Marque na ordem:
+Comece **no máximo 15 minutos antes** do horário combinado (RDS cold + first migrate + propagação CF + **canal IVS / OBS** se a demo incluir ao vivo). Marque na ordem:
 
 **T−15 — infra e capacidade**
 
@@ -109,24 +109,28 @@ Comece **no máximo 15 minutos antes** do horário combinado (RDS cold + first m
 - [ ] RDS em estado **available** (console RDS ou describe-db-instances)
 - [ ] Serviço ECS com `desired_count = 1` e ≥1 task **RUNNING** (não 0; não “scale-to-zero”)
 - [ ] Target group / ALB com targets **healthy** (ou equivalente no console ECS)
+- [ ] **Live (003):** `terraform output ivs_channel_arn` presente (1 canal); task com `LIVE_BACKEND=ivs` após publish — detalhe [003 quickstart §B3](../003-live-streaming-ivs/quickstart.md)
 
 **T−10 — API saudável**
 
 - [ ] `GET {api_url}/health` → **200** de forma estável (2–3 chamadas espaçadas; HTTPS CloudFront da API)
 - [ ] Logs CloudWatch da task sem fatal de migrate/seed (opcional, se health oscilar)
+- [ ] **Live (003):** status live da aula demo = inativa (ou estado conhecido); sem cold start de stack pendente
 
 **T−5 — smoke da demo (SC-010 / SC-011)**
 
 - [ ] Login **admin** seed + listagem de ≥1 curso (API ou UI)
 - [ ] Login pela UI em `{frontend_url}` (SPA carrega; network chama `api_url` sem mixed content)
 - [ ] Amostra rápida RBAC: professor consegue escrita de aula **ou** aluno só lê (mensagem de negação em PT)
+- [ ] **Live (003):** professor **Inicia live** + OBS **Live**; player do gestor com sinal; aluno em outra sessão vê ao vivo (não confundir com VOD) — **antes** de T−0
 
 **T−0 — janela aberta**
 
 - [ ] Não alterar `desired_count` para 0 durante a demo
 - [ ] Não iniciar `terraform destroy` até o encerramento combinado
+- [ ] **Live (003):** encoder continua; **não** apply/destroy nem “subir OBS agora” no minuto da abertura
 
-**Se pular o warm-up:** cold start / RDS ainda subindo / first migrate na abertura da janela — viola o critério de preparação para o pico (constitution II / FR-012). Não use a sessão como “demo de pico” sem este checklist.
+**Se pular o warm-up:** cold start / RDS ainda subindo / first migrate / **canal ou OBS frios** na abertura da janela — viola o critério de preparação para o pico (constitution II / FR-012; live SC-006). Não use a sessão como “demo de pico” sem este checklist.
 
 ## 5. Verificar demo (RBAC)
 
@@ -204,7 +208,8 @@ Não versionar: `*.tfvars` (exceto `*.tfvars.example`), `*.tfstate*`, `.terrafor
 
 ## Fora de escopo neste runbook
 
-Streaming, chat, OAuth, Redis AWS, domínio customizado, automação EventBridge (P2 — escolha b / gap).
+Chat, OAuth, Redis AWS, domínio customizado, automação EventBridge apply/destroy (P2 — escolha b / gap).  
+**Streaming ao vivo** não é detalhado aqui — runbook e critérios: [003-live-streaming-ivs/quickstart.md](../003-live-streaming-ivs/quickstart.md) (encaixa no ciclo apply→publish→warm-up→demo→destroy **sem** reabrir NAT/Redis/budget).
 
 ## Validação deste quickstart (checklist frio)
 
