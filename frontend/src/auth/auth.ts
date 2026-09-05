@@ -57,6 +57,11 @@ export function canManageUsers(role: Role) {
   return role === 'admin'
 }
 
+/** Gestão de certificado (elegibilidade / listar / invalidar) — só admin. */
+export function canManageCertificados(role: Role) {
+  return role === 'admin'
+}
+
 export function roleLabel(role: Role) {
   switch (role) {
     case 'admin':

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Curso } from '../api/client'
+import { canManageCertificados } from '../auth/auth'
+import { useAuth } from '../auth/AuthContext'
+import { CursoCertificadoPanel } from '../components/CursoCertificadoPanel'
 
 type Props = {
   title: string
@@ -10,6 +13,9 @@ type Props = {
 }
 
 export function CursosPage({ title, emptyMessage, canWrite = false }: Props) {
+  const { user } = useAuth()
+  const showCertificado =
+    user != null && (user.role === 'aluno' || canManageCertificados(user.role))
   const [items, setItems] = useState<Curso[]>([])
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
@@ -135,6 +141,17 @@ export function CursosPage({ title, emptyMessage, canWrite = false }: Props) {
           </table>
         )}
       </div>
+
+      {showCertificado &&
+        !loading &&
+        items.map((curso) => (
+          <div className="card" key={`cert-${curso.id}`} id={`curso-${curso.id}-certificado`}>
+            <h2>
+              {curso.titulo} <span className="muted">(#{curso.id})</span>
+            </h2>
+            <CursoCertificadoPanel cursoId={curso.id} />
+          </div>
+        ))}
     </section>
   )
 }

@@ -36,7 +36,15 @@ func setupMigratedDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Curso{}, &models.Aula{}, &models.Aluno{}, &models.AulaVod{}))
+	require.NoError(t, db.AutoMigrate(
+		&models.User{},
+		&models.Curso{},
+		&models.Aula{},
+		&models.Aluno{},
+		&models.AulaVod{},
+		&models.CertificadoElegibilidade{},
+		&models.Certificado{},
+	))
 	return db
 }
 
@@ -124,6 +132,37 @@ func TestSeedVodDemoIdempotentOnRerun(t *testing.T) {
 	var n int64
 	require.NoError(t, db.Model(&models.AulaVod{}).Where("aula_id = ?", aula.ID).Count(&n).Error)
 	require.Equal(t, int64(1), n)
+}
+
+func TestSeedCertificadoDemoCreatesEligibilityOnly(t *testing.T) {
+	db := setupMigratedDB(t)
+	cfg := withVODLocal(t, demoTestConfig())
+
+	require.NoError(t, Run(db, cfg))
+
+	var aluno models.User
+	require.NoError(t, db.Where("email = ?", cfg.DemoAlunoEmail).First(&aluno).Error)
+	var curso models.Curso
+	require.NoError(t, db.Where("titulo = ?", demoCursoTitulo).First(&curso).Error)
+
+	require.Equal(t, int64(1), countModel(t, db, &models.CertificadoElegibilidade{}))
+	require.Equal(t, int64(0), countModel(t, db, &models.Certificado{}))
+
+	var eleg models.CertificadoElegibilidade
+	require.NoError(t, db.Where("user_id = ? AND curso_id = ?", aluno.ID, curso.ID).First(&eleg).Error)
+}
+
+func TestSeedCertificadoDemoIdempotentOnRerun(t *testing.T) {
+	db := setupMigratedDB(t)
+	cfg := withVODLocal(t, demoTestConfig())
+
+	require.NoError(t, Run(db, cfg))
+	require.NoError(t, seedCertificadoDemo(cfg)(db))
+	require.NoError(t, Run(db, cfg))
+	require.NoError(t, seedCertificadoDemo(cfg)(db))
+
+	require.Equal(t, int64(1), countModel(t, db, &models.CertificadoElegibilidade{}))
+	require.Equal(t, int64(0), countModel(t, db, &models.Certificado{}))
 }
 
 func assertUser(t *testing.T, db *gorm.DB, email string, role models.Role, password string) {

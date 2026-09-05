@@ -20,11 +20,15 @@ func Migrate(db *gorm.DB) error {
 		&models.Aluno{},
 		&models.AulaVod{},
 		&models.AulaLive{},
+		&models.CertificadoElegibilidade{},
+		&models.Certificado{},
 	); err != nil {
 		return err
 	}
 	// Invariante ≤1 live ao_vivo (Postgres/SQLite com índice parcial).
 	_ = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_aula_lives_one_ao_vivo ON aula_lives (status) WHERE status = 'ao_vivo'`).Error
+	// Invariante ≤1 certificado valido por (user_id, curso_id).
+	_ = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_certificados_one_valido ON certificados (user_id, curso_id) WHERE status = 'valido'`).Error
 	return nil
 }
 

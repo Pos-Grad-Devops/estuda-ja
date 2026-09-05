@@ -83,6 +83,13 @@ func main() {
 	protected.Put("/cursos/:id", requireAdmin, handlers.UpdateCurso)
 	protected.Delete("/cursos/:id", requireAdmin, handlers.DeleteCurso)
 
+	// Certificado (005): status/pdf = leitura de cursos; gestão = só admin. Sem rotas flat /certificados.
+	protected.Get("/cursos/:id/certificado", handlers.GetCertificadoStatus)
+	protected.Get("/cursos/:id/certificado/pdf", handlers.GetCertificadoPDF)
+	protected.Put("/cursos/:id/certificados/elegibilidade", requireAdmin, handlers.PutCertificadoElegibilidade)
+	protected.Get("/cursos/:id/certificados", requireAdmin, handlers.ListCertificadosCurso)
+	protected.Post("/cursos/:id/certificados/:certId/invalidar", requireAdmin, handlers.InvalidarCertificado)
+
 	protected.Get("/aulas", handlers.ListAulas)
 	protected.Get("/aulas/:id", handlers.GetAula)
 	protected.Post("/aulas", requireAdminProfessor, handlers.CreateAula)

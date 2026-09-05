@@ -53,7 +53,7 @@ estuda-ja/
 - Ciclo: apply → publish API → health → rebuild front → **warm-up (incl. IVS/OBS)** → demo → **`terraform destroy` entre sessões**
 - Budget/alerta da conta: stack **separada** em `infra/budget/` (limiar default **US$ 5**) — **não** destruir com a demo
 - Segredos: SSM + `*.tfvars` / state locais gitignored — nunca commitados
-- Runbook: [README.md](./README.md) (seção Demo AWS), [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md), streaming [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md), chat [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md)
+- Runbook: [README.md](./README.md) (seção Demo AWS), [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md), streaming [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md), chat [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md), certificado [specs/005-course-certificate/quickstart.md](./specs/005-course-certificate/quickstart.md)
 
 | Prioridade | Escopo |
 |------------|--------|
@@ -74,10 +74,11 @@ estuda-ja/
 - **Biblioteca VOD P1** (`002-vod-library`): gravação por aula (upload/replace/delete + playback ~15 min); storage **local** (Compose) ou **S3** (demo AWS); UI na ficha da aula (`AulasPage`); seed `003_seed_vod_demo` + asset `backend/assets/vod/demo-aula.mp4`
 - **Streaming ao vivo P1+P2** (`003-live-streaming-ivs`): `AulaLive` + handlers `live_*`; **stub** local/CI (`LIVE_BACKEND=stub`); **IVS** na demo AWS (`LIVE_BACKEND=ivs`); UI bloco **Transmissão ao vivo** + `LivePlayer`; estados `agendada` \| `ao_vivo` \| `encerrada` (agendada exige horário); warm-up streaming: checklist manual + `infra/check-live-warmup.ps1` (sem EventBridge 001)
 - **Chat da aula P1** (`004-live-class-chat`): hub em memória por `aula_id` (`internal/chat`); `GET /api/v1/aulas/:id/chat/ws?token=...`; UI `AulaChatPanel` na ficha; ALB `idle_timeout = 3600`; local WS real; CI = testes Go sem AWS; **sem** Redis AWS / API GW WS / Lambda; **sem** histórico ao reabrir
+- **Certificado P1** (`005-course-certificate`): elegibilidade admin (`CertificadoElegibilidade`) + emissão lazy na 1ª `GET .../certificado/pdf` (PDF on-the-fly via `certpdf`/fpdf+TTF); UI `CursoCertificadoPanel` em `CursosPage`; gestão **só admin**; seed `004_seed_certificado_demo` = **só** elegibilidade (sem PDF pré-emitido); **sem** S3/tf/`CERT_*` de certificado; destroy = linhas somem com o RDS
 
 ### Fora do escopo (não implementar sem pedido)
 - Moderação de chat P2 / IVS Chat (US5 de `004`)
-- Certificado / presença (ex. 005)
+- Certificado P2 (template rico, lista agregada, reemissão elaborada — US5 de `005`)
 - Pipeline **live→VOD** (gravação IVS→S3 automática)
 - Tokenização / playback authorization IVS; multi-canal; DVR
 - Automação EventBridge apply/destroy da stack **001** (gap P2 / Fase F — só se pedido explícito)
@@ -85,6 +86,7 @@ estuda-ja/
 - Redis/ElastiCache na AWS
 - Domínio customizado / certificados ACM custom
 - Página/rota “Biblioteca” dedicada; download do MP4; CloudFront de mídia; rascunho/título/duração VOD (P2 da feature 002)
+- Página/rota “Certificados” dedicada; gestão de certificado por professor; S3 de PDF de certificado
 
 ### Permissões (RBAC)
 
@@ -98,10 +100,12 @@ estuda-ja/
 | Live (status/playback) | leitura | leitura | leitura |
 | Live (schedule/cancel/start/stop/ingest) | ✓ | ✓ | — |
 | Chat (WS enviar/receber na aula) | ✓ | ✓ | ✓ |
+| Certificado (status/PDF próprio) | ✓ | ✓ | ✓ (próprio) |
+| Certificado (elegibilidade / list / invalidar) | ✓ | — | — |
 | Alunos | CRUD | — | — |
 | Usuários | CRUD | — | — |
 
-Escrita VOD e gestão live = mesmo recorte de aulas (`RequireRoles(admin, professor)`). Chat = papéis com leitura de aulas (não amplia ingest/VOD). **Não reabrir** a baseline `001-aws-mvp-terraform` (sem NAT, sem Redis AWS, destroy entre sessões, budget separado).
+Escrita VOD e gestão live = mesmo recorte de aulas (`RequireRoles(admin, professor)`). Chat = papéis com leitura de aulas (não amplia ingest/VOD). Gestão de certificado = **só admin** (`canManageCertificados` / `RequireRoles(admin)`). **Não reabrir** a baseline `001-aws-mvp-terraform` (sem NAT, sem Redis AWS, destroy entre sessões, budget separado).
 
 Admin inicial (migration `001_seed_admin` via gormigrate): `ADMIN_EMAIL` / `ADMIN_PASSWORD` (default `admin@estudaja.com` / `admin123`).
 
@@ -109,9 +113,13 @@ Seed demo (migration `002_seed_demo`): professor (`DEMO_PROFESSOR_EMAIL` / `DEMO
 
 Seed VOD (migration `003_seed_vod_demo`): se a aula de demo existir e ainda não tiver VOD, copia `assets/vod/demo-aula.mp4` para o storage (`vod/aulas/{id}/current.mp4`) e cria metadados `publicado`. Idempotente. Domínio backend: `handler/vod_handler.go`, `repository/vod_repository.go`, `vodstorage/` (local \| s3).
 
+Seed certificado (migration `004_seed_certificado_demo`): se aluno seed + curso demo existirem e ainda não houver elegibilidade do par, cria **só** `CertificadoElegibilidade`. **Não** cria `Certificado` (emissão lazy na 1ª solicitação PDF). Idempotente. Domínio: `handler/certificado_handler.go`, `repository/certificado_repository.go`, `certpdf/` + TTF em `assets/certs/`. Contratos: [certificado-api](./specs/005-course-certificate/contracts/certificado-api.md), [certificado-env](./specs/005-course-certificate/contracts/certificado-env.md) (zero `CERT_*`; sem S3 de cert).
+
 Live (feature `003`): modelo `AulaLive` (`handler/live_handler.go`, `repository/live_repository.go`); status `agendada` \| `ao_vivo` \| `encerrada` (ausência = `inativa`); schedule/cancel/start/stop; env `LIVE_BACKEND` (`stub` \| `ivs`) + `IVS_*` ([contracts/live-env](./specs/003-live-streaming-ivs/contracts/live-env.md)). Stub ignora `IVS_*`; AWS fail-fast se `ivs` incompleto. `Aula.Status` CRUD **não** é o estado da live. Sem seed `ao_vivo`. IaC: `infra/ivs.tf` + SSM/ECS; output só `ivs_channel_arn`. Warm-up: [check-live-warmup.ps1](./infra/check-live-warmup.ps1).
 
 Chat (feature `004`): hub in-process (`internal/chat`) por `aula_id`; `handler/chat_handler.go`; path `GET /api/v1/aulas/:id/chat/ws?token=...` (JWT na query; não logar URI com token); texto ≤ 500; sala independente do status live; mensagens efêmeras à conexão; UI `AulaChatPanel` na `AulasPage`. ALB `idle_timeout = 3600` (`infra/alb.tf`); sem stickiness; sem Redis/API GW WS. Moderação P2 **fora**. Contratos: [chat-ws](./specs/004-live-class-chat/contracts/chat-ws.md), [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
+
+Certificado (feature `005` P1): models `CertificadoElegibilidade` + `Certificado` (`status` `valido`\|`invalidado`); admin marca elegibilidade **sem** emitir; aluno elegível solicita PDF → lazy emit + stream `application/pdf`; invalidar remove elegibilidade; reabilitar + nova solicitação = **novo** id; UI no contexto do curso (`CursoCertificadoPanel`); **sem** página “Certificados”; **sem** Terraform/S3 de certificado; P2 (template/lista) **fora**.
 
 ## Backend (Go)
 
@@ -121,13 +129,15 @@ Chat (feature `004`): hub in-process (`internal/chat`) por `aula_id`; `handler/c
 backend/
 ├── cmd/api/main.go           # bootstrap, rotas, middleware
 ├── assets/vod/               # MP4 seed (demo-aula.mp4) — COPY no Dockerfile
+├── assets/certs/             # TTF embutida (DejaVuSans) para PDF — COPY no Dockerfile
 ├── internal/
-│   ├── config/               # VOD_*, LIVE_BACKEND, IVS_*
+│   ├── config/               # VOD_*, LIVE_BACKEND, IVS_* (sem CERT_*)
 │   ├── database/
-│   ├── models/               # entidades GORM (incl. AulaVod, AulaLive)
+│   ├── models/               # entidades GORM (incl. AulaVod, AulaLive, Certificado*)
 │   ├── repository/           # um arquivo por domínio (*_repository.go)
-│   ├── handler/              # um arquivo por domínio (*_handler.go; live_handler.go; chat_handler.go)
+│   ├── handler/              # um arquivo por domínio (*_handler.go; live/chat/certificado)
 │   ├── chat/                 # hub WebSocket em memória por aula_id
+│   ├── certpdf/              # PDF on-the-fly (fpdf + TTF)
 │   ├── vodstorage/           # Storage local | S3 (Put/Open/Delete; Presign no S3)
 │   ├── middleware/
 │   ├── auth/
@@ -154,10 +164,10 @@ backend/
 
 ```
 frontend/src/
-├── api/client.ts       # fetch + token JWT (incl. live + vod + helper URL WS chat)
+├── api/client.ts       # fetch + token JWT (incl. live + vod + chat + certificado)
 ├── auth/               # AuthContext, permissions, ProtectedRoute
-├── components/         # LivePlayer; AulaChatPanel (chat da aula)
-├── pages/              # uma page por recurso (live + chat na AulasPage)
+├── components/         # LivePlayer; AulaChatPanel; CursoCertificadoPanel
+├── pages/              # uma page por recurso (live+chat na AulasPage; cert na CursosPage)
 └── utils/date.ts       # datas BR (espelhar backend)
 ```
 
@@ -207,8 +217,8 @@ cd docs && npm run slides:html   # exportar apresentação
 ## Ao iniciar um chat novo
 
 1. Ler este arquivo e, se necessário, [README.md](./README.md) (Desenvolvimento + Demo AWS)
-2. Confirmar escopo: streaming `003` e chat `004` P1 **completos** — não tratar como proibidos; **não** implementar certificado, moderação de chat P2, live→VOD ou EventBridge apply/destroy do 001 sem pedido explícito
-3. Na AWS: preferir destroy entre sessões; não sugerir NAT nem Redis AWS; CD = opcional (não substitui publish manual); warm-up T−15 inclui canal IVS + OBS **antes** de T−0; script `check-live-warmup.ps1` só health/sinal; chat some com a API no destroy
-4. Manter RBAC e formato de datas ao tocar em API ou UI (live = mesmo recorte de aulas; chat não amplia ingest/VOD)
+2. Confirmar escopo: streaming `003`, chat `004` e certificado `005` P1 **completos** — não tratar como proibidos; **não** implementar certificado P2, moderação de chat P2, live→VOD ou EventBridge apply/destroy do 001 sem pedido explícito
+3. Na AWS: preferir destroy entre sessões; não sugerir NAT nem Redis AWS; CD = opcional (não substitui publish manual); warm-up T−15 inclui canal IVS + OBS **antes** de T−0; script `check-live-warmup.ps1` só health/sinal; chat some com a API no destroy; certificados somem com o RDS (sem S3 cert)
+4. Manter RBAC e formato de datas ao tocar em API ou UI (live = mesmo recorte de aulas; chat não amplia ingest/VOD; certificado gestão = só admin)
 5. Responder em português
-6. Próximo produto após 004 P1 = **005 certificado** (salvo pedido explícito de outro escopo)
+6. Escopo de produto [DESCRICAO.md](./DESCRICAO.md) (live + chat + VOD + certificado P1) **fechado** — próximos itens só sob pedido explícito (P2 / gaps)

@@ -90,6 +90,49 @@ export type LiveIngest = {
   mensagem?: string
 }
 
+export type CertificadoStatus = 'valido' | 'invalidado'
+
+export type CertificadoResumo = {
+  id: number
+  status: CertificadoStatus
+  emitido_em: string
+  aluno_nome: string
+  curso_titulo: string
+  user_id?: number
+}
+
+export type CertificadoStatusResponse = {
+  curso_id: number
+  user_id: number
+  elegivel: boolean
+  certificado: CertificadoResumo | null
+}
+
+export type CertificadoElegibilidadeItem = {
+  user_id: number
+  user_nome: string
+  created_at: string
+}
+
+export type CertificadosListResponse = {
+  curso_id: number
+  elegibilidades: CertificadoElegibilidadeItem[]
+  certificados: CertificadoResumo[]
+}
+
+export type CertificadoElegibilidadeResponse = {
+  curso_id: number
+  user_id: number
+  elegivel: boolean
+}
+
+export type CertificadoInvalidarResponse = {
+  id: number
+  status: CertificadoStatus
+  curso_id: number
+  user_id: number
+}
+
 async function parseError(response: Response): Promise<Error> {
   if (response.status === 401) {
     return new Error('sessão expirada, faça login novamente')
@@ -233,5 +276,45 @@ export const api = {
     update: (id: number, data: UserInput) =>
       request<User>(`/api/v1/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
+  },
+  certificados: {
+    getStatus: (cursoId: number, userId?: number) => {
+      const qs = userId != null ? `?user_id=${userId}` : ''
+      return request<CertificadoStatusResponse>(`/api/v1/cursos/${cursoId}/certificado${qs}`)
+    },
+    downloadPdf: async (cursoId: number): Promise<void> => {
+      const token = getToken()
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+      const response = await fetch(`${API_URL}/api/v1/cursos/${cursoId}/certificado/pdf`, {
+        headers,
+      })
+      if (!response.ok) {
+        throw await parseError(response)
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `certificado-curso-${cursoId}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    },
+    marcarElegibilidade: (cursoId: number, userId: number) =>
+      request<CertificadoElegibilidadeResponse>(
+        `/api/v1/cursos/${cursoId}/certificados/elegibilidade`,
+        { method: 'PUT', body: JSON.stringify({ user_id: userId }) },
+      ),
+    list: (cursoId: number) =>
+      request<CertificadosListResponse>(`/api/v1/cursos/${cursoId}/certificados`),
+    invalidar: (cursoId: number, certId: number) =>
+      request<CertificadoInvalidarResponse>(
+        `/api/v1/cursos/${cursoId}/certificados/${certId}/invalidar`,
+        { method: 'POST' },
+      ),
   },
 }

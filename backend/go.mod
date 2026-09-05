@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.111.0
 	github.com/fasthttp/websocket v1.5.12
 	github.com/go-gormigrate/gormigrate/v2 v2.1.6
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/golang-jwt/jwt/v5 v5.3.1

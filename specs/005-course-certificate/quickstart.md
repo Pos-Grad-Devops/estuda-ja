@@ -1,12 +1,12 @@
 # Quickstart: Certificado ao final do curso (005)
 
-Validação ponta a ponta **após** implementação das fases 1–3 — este arquivo é o guia; não implementa. Contratos: [certificado-api.md](./contracts/certificado-api.md), [certificado-env.md](./contracts/certificado-env.md). Modelo: [data-model.md](./data-model.md).
+Validação ponta a ponta **após** implementação das fases 1–3. Contratos: [certificado-api.md](./contracts/certificado-api.md), [certificado-env.md](./contracts/certificado-env.md). Modelo: [data-model.md](./data-model.md).
 
 ## Pré-requisitos
 
 - Baseline **001–004** operacional (API + front + seed demo + VOD/live/chat conforme já entregue).
 - Contas seed: admin, `aluno@estudaja.com` / `aluno123`, curso demo “Aula Magna — Direito Constitucional”.
-- Feature 005 implementada conforme plan (PDF on-the-fly; sem S3 de certificado).
+- Feature **005 P1** entregue: PDF on-the-fly; migration `004_seed_certificado_demo`; **sem** S3/Terraform de certificado; **sem** vars `CERT_*`.
 
 ## A — Compose (caminho feliz)
 
@@ -20,9 +20,11 @@ make frontend
 
 Ou `docker compose up --build` equivalente. Sem vars `CERT_*` / S3 de certificado.
 
+Na subida da API, `004_seed_certificado_demo` marca **só** elegibilidade do aluno seed no curso demo (idempotente). **Não** cria linha em `certificados` — a 1ª solicitação do aluno emite o PDF.
+
 ### Passos
 
-1. **Admin** — login → abrir **Cursos** → no painel do curso demo: confirmar elegibilidade do aluno seed (seed já marca) **ou** marcar `user_id` do aluno → **não** deve existir certificado emitido ainda.
+1. **Admin** — login → **Cursos** → curso demo → painel certificado: confirmar elegibilidade do aluno seed (seed já marca) **ou** marcar `user_id` → **não** deve existir certificado emitido ainda.
 2. **Aluno** (janela anônima) — login `aluno@estudaja.com` → mesmo curso → solicitar/baixar certificado.
 3. Verificar download **PDF** com nome “Aluno Demo”, título do curso e data `dd/mm/yyyy` (ou com hora).
 4. Baixar de novo → mesmo certificado ativo (sem segundo registro válido).
@@ -34,11 +36,11 @@ Ou `docker compose up --build` equivalente. Sem vars `CERT_*` / S3 de certificad
 
 | Check | Resultado |
 |-------|-----------|
-| Seed = só elegibilidade | Sem PDF pré-emitido |
-| 1ª solicitação aluno | Cria registro + PDF |
+| Seed `004` = só elegibilidade | Sem PDF / `Certificado` pré-emitido |
+| 1ª solicitação aluno | Cria registro `valido` + PDF |
 | 2ª solicitação | Reutiliza ativo |
 | Invalidar | Bloqueia até reabilitar |
-| Reabilitar + solicitar | Novo certificado |
+| Reabilitar + solicitar | Novo certificado (novo id) |
 | Professor / aluno gestão | Sem UI; API 403 |
 | Live/VOD/chat | Intactos |
 
@@ -49,7 +51,7 @@ cd backend && go test ./...
 cd frontend && npm run build
 ```
 
-Esperado: testes de handlers/RBAC/lazy emit/invalidação/erros PT verdes. **Não** exige Terraform nem conta AWS.
+Esperado: testes de handlers/RBAC/lazy emit/invalidação/erros PT + seed `004` (elegibilidade sem certificado) verdes. **Não** exige Terraform nem conta AWS.
 
 ## C — AWS (sessão efêmera)
 
@@ -59,9 +61,10 @@ Mesmo comportamento da §A na API atrás do `api_url` da sessão (`us-east-1`).
 apply → publish-api → publish-frontend (VITE_API_URL) → demo certificado → destroy
 ```
 
-- **Sem** bucket/recursos novos de certificado (PDF on-the-fly).
+- **Sem** bucket/recursos novos de certificado (PDF on-the-fly; [certificado-env.md](./contracts/certificado-env.md)).
 - **Sem** NAT / Redis AWS / Cognito / domínio custom.
 - Budget (`infra/budget/`) **não** destruir com a demo.
+- Passos incrementais de certificado ≤ **15 min** (SC-005); aluno elegível obtém PDF ≤ **2 min** após login (SC-001).
 
 ### Destroy — o que acontece com certificados
 
@@ -72,11 +75,11 @@ terraform destroy
 
 | Artefato | Após destroy |
 |----------|----------------|
-| Linhas `certificado_elegibilidades` / `certificados` | Removidas com o RDS |
-| Arquivos PDF em S3 | N/A (não existem no P1) |
+| Linhas `certificado_elegibilidades` / `certificados` | Removidas com o **RDS** |
+| Arquivos PDF em S3 | **N/A** (não existem no P1) |
 | Budget / alerta da conta | Permanece (`infra/budget/`) |
 
-Próxima sessão: `apply` + seed → elegibilidade do aluno seed de novo; primeira solicitação emite PDF fresco.
+Próxima sessão: `apply` + migrations/seed → elegibilidade do aluno seed de novo; primeira solicitação emite PDF fresco. **Não** reabrir baseline 001–004.
 
 ## Tempo alvo
 

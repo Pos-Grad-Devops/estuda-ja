@@ -9,6 +9,32 @@
 
 ---
 
+## Como rodar
+
+### Local (dev)
+
+```bash
+docker compose up --build
+# ou: make infra-up  +  API (go run)  +  frontend (npm run dev)
+```
+
+- App: http://localhost:5173 · API: http://localhost:8080  
+- Logins seed: `admin@estudaja.com` / `admin123` (também professor/aluno — ver tabela em Desenvolvimento)
+
+### Demo AWS (apresentação)
+
+Não basta `terraform apply`. Ordem resumida:
+
+1. Credenciais AWS + budget uma vez (`infra/budget/`)  
+2. `cd infra && terraform apply`  
+3. Publish API (imagem → ECR) + health  
+4. Rebuild/publish front com `VITE_API_URL` da sessão  
+5. Demo → `terraform destroy` (não destruir o budget)
+
+Detalhes: seção [Demo AWS (MVP P1)](#demo-aws-mvp-p1) e scripts `infra/publish-*.ps1`.
+
+---
+
 ## Desenvolvimento
 
 ### Estrutura do repositório
@@ -125,7 +151,8 @@ Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e b
 
 ### Fora do escopo atual (produto)
 
-- Certificado / presença · pipeline live→VOD · tokenização IVS
+- Template rico / lista agregada / reemissão elaborada de certificado (P2 de `005`)
+- Pipeline live→VOD · tokenização IVS
 - Moderação de chat (P2 da feature `004`)
 - Estados live P2 (`agendada` ricos — Fase 5 de `003`) sem pedido explícito
 - OAuth externo
@@ -134,7 +161,8 @@ Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e b
 - Automação EventBridge de apply/destroy (P2)
 
 Streaming ao vivo P1 (`003`) **está implementado** (stub local + IVS na demo AWS) — ver seção Demo AWS e [quickstart 003](./specs/003-live-streaming-ivs/quickstart.md).  
-Chat da aula P1 (`004`) **está implementado** (WebSocket na API, hub em memória; local + AWS) — ver [quickstart 004](./specs/004-live-class-chat/quickstart.md).
+Chat da aula P1 (`004`) **está implementado** (WebSocket na API, hub em memória; local + AWS) — ver [quickstart 004](./specs/004-live-class-chat/quickstart.md).  
+Certificado P1 (`005`) **está implementado** (elegibilidade admin + PDF on-the-fly no curso; sem S3/tf de cert) — ver [quickstart 005](./specs/005-course-certificate/quickstart.md).
 
 ---
 
@@ -145,11 +173,12 @@ Caminho oficial de hospedagem acadêmica: **AWS gerenciado** via Terraform em `i
 Runbook completo e critérios de sucesso: [specs/001-aws-mvp-terraform/quickstart.md](./specs/001-aws-mvp-terraform/quickstart.md).  
 Streaming ao vivo (IVS + OBS): [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md).  
 Chat da aula: [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md).  
-Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md) · [live-env](./specs/003-live-streaming-ivs/contracts/live-env.md) · [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
+Certificado: [specs/005-course-certificate/quickstart.md](./specs/005-course-certificate/quickstart.md).  
+Contratos: [api-env](./specs/001-aws-mvp-terraform/contracts/api-env.md) · [terraform-outputs](./specs/001-aws-mvp-terraform/contracts/terraform-outputs.md) · [frontend-publish](./specs/001-aws-mvp-terraform/contracts/frontend-publish.md) · [live-env](./specs/003-live-streaming-ivs/contracts/live-env.md) · [chat-env](./specs/004-live-class-chat/contracts/chat-env.md) · [certificado-env](./specs/005-course-certificate/contracts/certificado-env.md).
 
 **Ordem fixa da sessão** (não pular passos):
 
-1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** (incl. canal IVS + smoke live) → 8. **Demo** (VOD + ao vivo + **chat**) → 9. **Destroy**
+1. **Billing** → 2. **Apply** → 3. **Push API** → 4. **CORS** → 5. **Health** → 6. **Rebuild front** → 7. **Warm-up** (incl. canal IVS + smoke live) → 8. **Demo** (VOD + ao vivo + chat + **certificado**) → 9. **Destroy**
 
 ### 0. Alerta de billing (uma vez por conta)
 
@@ -188,6 +217,8 @@ Região fixa: **us-east-1**. Outputs obrigatórios: `frontend_url`, `api_url`, `
 **Live (canal IVS efêmero):** o apply cria **um** canal IVS BASIC LOW-latency (`infra/ivs.tf`). A task sobe com `LIVE_BACKEND=ivs`, `IVS_INGEST_ENDPOINT`, `IVS_PLAYBACK_URL`, `IVS_CHANNEL_ARN` e secret SSM `IVS_STREAM_KEY`. Output só `ivs_channel_arn` — **sem** stream key nem playback URL em plaintext. Local/CI permanece `LIVE_BACKEND=stub` (Compose).
 
 **Chat (WebSocket na API):** sem serviço extra. ALB `idle_timeout = 3600` (`infra/alb.tf`) para conexões longas; **sem** stickiness no TG; **sem** Redis/ElastiCache; **sem** API Gateway WebSocket / Lambda. Local = WS real na porta 8080; CI = `go test` sem AWS. Keepalive `chat.ping`/`chat.pong` evita idle ~10 min do CloudFront. Path: `GET /api/v1/aulas/:id/chat/ws?token=...` (não colar URLs com token).
+
+**Certificado (PDF on-the-fly):** **sem** bucket/IAM/`CERT_*` novos ([certificado-env](./specs/005-course-certificate/contracts/certificado-env.md)). Na subida da API, `004_seed_certificado_demo` marca **só** elegibilidade do aluno seed no curso demo (sem PDF pré-emitido). Local e AWS: emissão real na **1ª** solicitação do aluno; CI = testes Go sem AWS.
 
 ### 2–5. Publish API → CORS → health → front
 
@@ -265,7 +296,7 @@ Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / alu
 3. Confirmar: **sem** página Biblioteca; **sem** download; visitante sem JWT não reproduz.
 4. Validação ponta a ponta: [specs/002-vod-library/quickstart.md](./specs/002-vod-library/quickstart.md).
 
-O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `demo-aula.mp4`). Uploads feitos na sessão anterior **não** voltam após destroy.
+O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `demo-aula.mp4`), 1 elegibilidade de certificado (aluno×curso demo — **sem** PDF pré-emitido). Uploads feitos na sessão anterior **não** voltam após destroy.
 
 **Demo streaming ao vivo (passos extras ≤ ~15 min incremental — SC-005):**
 
@@ -285,6 +316,14 @@ Local/CI: `LIVE_BACKEND=stub` — estados/RBAC/erros PT **sem** vídeo real (pla
 3. WS via `wss` no host de `{api_url}` (CloudFront). Não usar `alb_dns_name` no browser. **Não** colar URLs com `?token=`.
 4. Validação: [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md) §C. Local/CI: §A / §B (WS real no Compose; testes Go sem AWS).
 
+**Demo certificado (passos extras ≤ ~15 min incremental — SC-005):**
+
+1. Após publish + health: login `aluno@estudaja.com` → **Cursos** → curso demo → painel certificado (seed já deixou elegível; **sem** certificado pré-emitido).
+2. Solicitar/baixar PDF → verificar nome, curso e data BR; segunda solicitação reutiliza o mesmo ativo.
+3. (Opcional) Admin invalida → aluno bloqueado em PT → admin reabilita → aluno obtém **novo** id/PDF.
+4. Professor **sem** controles de gestão. **Sem** página “Certificados”; **sem** S3 de cert; **sem** NAT/Redis/Cognito.
+5. Validação: [specs/005-course-certificate/quickstart.md](./specs/005-course-certificate/quickstart.md) §A (Compose) / §C (AWS).
+
 ### 8. Destroy (entre sessões)
 
 ```bash
@@ -303,10 +342,11 @@ terraform destroy
 | Snapshots RDS | Nenhum (`skip_final_snapshot = true`) |
 | Objetos VOD da sessão | Removidos com o bucket (`force_destroy`) |
 | Hub/chat em memória | Some com a task/API (sem recurso TF extra) |
+| Linhas `certificado_elegibilidades` / `certificados` | Removidas com o **RDS** (PDF on-the-fly — **N/A** S3 cert) |
 | Log groups órfãos | Apagar se restarem fora do TF |
 | **Billing → Budgets** | Budget **ainda ativo** |
 
-**Fora do escopo VOD P1:** página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2). Streaming ao vivo é feature **003** (não reabre 002). Chat P1 é feature **004** (hub na API; moderação P2 fora). Certificado, pipeline live→VOD e tokenização IVS continuam fora.
+**Fora do escopo VOD P1:** página Biblioteca dedicada, download do arquivo, rascunho/metadados (P2). Streaming ao vivo é feature **003** (não reabre 002). Chat P1 é feature **004** (hub na API; moderação P2 fora). Certificado P1 é feature **005** (PDF on-the-fly; P2 template/lista fora). Pipeline live→VOD e tokenização IVS continuam fora.
 
 Resíduos e detalhes: [research.md §10](./specs/001-aws-mvp-terraform/research.md).
 
@@ -606,6 +646,7 @@ cd docs && npm run slides:html
 | [specs/001-aws-mvp-terraform/](./specs/001-aws-mvp-terraform/) | Spec / plan / tasks / contracts da feature AWS MVP |
 | [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md) | Runbook streaming ao vivo (IVS + OBS) no ciclo 001 |
 | [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md) | Chat da aula (WS local + AWS; idle ALB / keepalive) |
+| [specs/005-course-certificate/quickstart.md](./specs/005-course-certificate/quickstart.md) | Certificado do curso (seed elegibilidade + PDF on-the-fly; destroy = RDS) |
 
 ---
 
@@ -616,7 +657,8 @@ cd docs && npm run slides:html
 - [x] CD no GitHub Actions — P3 opcional (Fase G; gate por test/build; secrets de sessão)
 - [x] Streaming ao vivo IVS P1 (`003-live-streaming-ivs`) — stub local + canal efêmero AWS + OBS + runbook
 - [x] Chat da aula P1 (`004-live-class-chat`) — WS na API + UI na ficha + idle ALB
-- [ ] Certificado / presença · live→VOD · moderação de chat P2 · estados live P2 (fora do P1 atual)
+- [x] Certificado P1 (`005-course-certificate`) — elegibilidade + PDF on-the-fly + seed + destroy documentado
+- [ ] Presença elaborada · live→VOD · moderação de chat P2 · certificado P2 (template/lista) · estados live P2
 
 ---
 

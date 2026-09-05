@@ -138,6 +138,14 @@ td {
   color: #6b7280;
 }
 
+.certificado-panel h3 {
+  margin-top: 0;
+}
+
+.certificado-panel h4 {
+  margin-bottom: 0.5rem;
+}
+
 .vod-block {
   margin: 0.75rem 0 1rem;
 }
