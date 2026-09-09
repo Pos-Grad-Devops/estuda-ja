@@ -27,9 +27,14 @@ $registry = ($ecrUrl -split "/")[0]
 $image = "${ecrUrl}:latest"
 
 Write-Host "==> ECR login ($registry)"
-aws ecr get-login-password --region $region |
-    docker login --username AWS --password-stdin $registry
-if ($LASTEXITCODE -ne 0) { throw "docker login falhou" }
+# PowerShell corrompe o pipe do token (CRLF) → docker login 400 Bad Request.
+# Usar cmd.exe evita isso no Windows.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+cmd /c "aws ecr get-login-password --region $region | docker login --username AWS --password-stdin $registry"
+$loginOk = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEap
+if (-not $loginOk) { throw "docker login falhou" }
 
 Write-Host "==> Build linux/arm64 → $image"
 docker buildx build --platform linux/arm64 -t $image --push $BackendDir

@@ -23,15 +23,22 @@ docker compose up --build
 
 ### Demo AWS (apresentação)
 
-Não basta `terraform apply`. Ordem resumida:
+Atalho (PowerShell, com Docker Desktop aberto só para build da imagem):
+
+```powershell
+cd infra
+.\start-session.ps1          # apply + publish API + publish front
+# …apresentar…
+.\stop-session.ps1           # destroy (não toca o budget)
+```
+
+Os scripts usam o profile AWS válido (`terraform` se o `default` estiver quebrado). Equivalente manual:
 
 1. Credenciais AWS + budget uma vez (`infra/budget/`)  
-2. `cd infra && terraform apply`  
-3. Publish API (imagem → ECR) + health  
-4. Rebuild/publish front com `VITE_API_URL` da sessão  
-5. Demo → `terraform destroy` (não destruir o budget)
+2. `terraform apply` → `.\publish-api.ps1` → health → `.\publish-frontend.ps1`  
+3. Demo → `terraform destroy` (não destruir o budget)
 
-Detalhes: seção [Demo AWS (MVP P1)](#demo-aws-mvp-p1) e scripts `infra/publish-*.ps1`.
+Detalhes: seção [Demo AWS (MVP P1)](#demo-aws-mvp-p1).
 
 ---
 
