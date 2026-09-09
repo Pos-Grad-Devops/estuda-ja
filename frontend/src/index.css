@@ -1,135 +1,153 @@
-:root {
-  font-family: Inter, system-ui, sans-serif;
-  line-height: 1.5;
-  color: #1f2937;
-  background: #f3f4f6;
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #f4f0ff;
+  --color-muted: #a898c4;
+  --color-bg: #0b0714;
+  --color-bg-elevated: #120c1f;
+  --color-surface: #1a122c;
+  --color-border: #2f2152;
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #a78bfa;
+  --color-live: #f43f5e;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-bg);
 }
 
-.layout {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem;
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
 }
 
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-header span {
-  margin-left: 0.75rem;
-  color: #6b7280;
-}
-
-nav {
-  display: flex;
-  gap: 1rem;
-}
-
-nav a {
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-nav a:hover {
-  text-decoration: underline;
-}
-
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1rem;
-}
-
-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.85rem;
-  font-weight: 600;
-}
-
+button,
 input,
 textarea,
 select {
   font: inherit;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
 }
 
-button {
-  font: inherit;
-  border: none;
-  border-radius: 8px;
-  padding: 0.55rem 0.9rem;
-  background: #2563eb;
-  color: #fff;
-  cursor: pointer;
-}
-
-button.secondary {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-button.danger {
-  background: #dc2626;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 0.65rem 0.4rem;
-  text-align: left;
-  vertical-align: top;
-}
-
-.error {
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-}
-
-.login-page,
 .loading-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  color: var(--color-muted);
 }
 
-.login-card {
-  width: min(100%, 420px);
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.95rem;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 
-.login-card h1 {
-  margin-top: 0;
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: #100a1c;
+  color: var(--color-ink);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.aurora-container {
+  width: 100%;
+  height: 100%;
+}
+
+.aurora-container canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.card-spotlight {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  overflow: hidden;
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-color: rgba(139, 92, 246, 0.22);
+}
+
+.card-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    var(--spotlight-color),
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+
+.card-spotlight:hover::before,
+.card-spotlight:focus-within::before {
+  opacity: 1;
+}
+
+.animated-gradient-text {
+  display: inline-flex;
+  align-items: center;
+  max-width: fit-content;
+}
+
+.animated-gradient-text .text-content {
+  display: inline-block;
+  background-size: 280% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gradient-shift 7s linear infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.split-char {
+  display: inline-block;
+  will-change: transform, opacity;
 }

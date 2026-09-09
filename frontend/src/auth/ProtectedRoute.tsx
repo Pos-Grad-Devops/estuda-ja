@@ -12,7 +12,7 @@ export function ProtectedRoute({ children, roles }: Props) {
   const location = useLocation()
 
   if (loading) {
-    return <p>Carregando...</p>
+    return <p className="loading-page">Carregando a escola...</p>
   }
 
   if (!user) {
@@ -20,7 +20,7 @@ export function ProtectedRoute({ children, roles }: Props) {
   }
 
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/cursos" replace />
+    return <Navigate to="/" replace />
   }
 
   return children
