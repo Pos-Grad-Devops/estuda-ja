@@ -71,10 +71,11 @@ estuda-ja/
 - Docker Compose local, pipeline CI
 - Demo AWS efêmera (Terraform + publish manual P1)
 - CD opcional P3 (Actions; gate test/build; secrets de sessão efêmera)
-- **Biblioteca VOD P1** (`002-vod-library`): gravação por aula (upload/replace/delete + playback ~15 min); storage **local** (Compose) ou **S3** (demo AWS); UI na ficha da aula (`AulasPage`); seed `003_seed_vod_demo` + asset `backend/assets/vod/demo-aula.mp4`
-- **Streaming ao vivo P1+P2** (`003-live-streaming-ivs`): `AulaLive` + handlers `live_*`; **stub** local/CI (`LIVE_BACKEND=stub`); **IVS** na demo AWS (`LIVE_BACKEND=ivs`); UI bloco **Transmissão ao vivo** + `LivePlayer`; estados `agendada` \| `ao_vivo` \| `encerrada` (agendada exige horário); warm-up streaming: checklist manual + `infra/check-live-warmup.ps1` (sem EventBridge 001)
-- **Chat da aula P1** (`004-live-class-chat`): hub em memória por `aula_id` (`internal/chat`); `GET /api/v1/aulas/:id/chat/ws?token=...`; UI `AulaChatPanel` na ficha; ALB `idle_timeout = 3600`; local WS real; CI = testes Go sem AWS; **sem** Redis AWS / API GW WS / Lambda; **sem** histórico ao reabrir
-- **Certificado P1** (`005-course-certificate`): elegibilidade admin (`CertificadoElegibilidade`) + emissão lazy na 1ª `GET .../certificado/pdf` (PDF on-the-fly via `certpdf`/fpdf+TTF); UI `CursoCertificadoPanel` em `CursosPage`; gestão **só admin**; seed `004_seed_certificado_demo` = **só** elegibilidade (sem PDF pré-emitido); **sem** S3/tf/`CERT_*` de certificado; destroy = linhas somem com o RDS
+- **Biblioteca VOD P1** (`002-vod-library`): gravação por aula (upload/replace/delete + playback ~15 min); storage **local** (Compose) ou **S3** (demo AWS); UI na ficha da aula (`AulaPage` `/aulas/:id`); seed `003_seed_vod_demo` + asset `backend/assets/vod/demo-aula.mp4`
+- **Streaming ao vivo P1+P2** (`003-live-streaming-ivs`): `AulaLive` + handlers `live_*`; **stub** local/CI (`LIVE_BACKEND=stub`); **IVS** na demo AWS (`LIVE_BACKEND=ivs`); UI bloco **Transmissão ao vivo** + `LivePlayer` na `AulaPage`; estados `agendada` \| `ao_vivo` \| `encerrada` (agendada exige horário); warm-up streaming: checklist manual + `infra/check-live-warmup.ps1` (sem EventBridge 001)
+- **Chat da aula P1** (`004-live-class-chat`): hub em memória por `aula_id` (`internal/chat`); `GET /api/v1/aulas/:id/chat/ws?token=...`; UI `AulaChatPanel` na ficha da aula; ALB `idle_timeout = 3600`; local WS real; CI = testes Go sem AWS; **sem** Redis AWS / API GW WS / Lambda; **sem** histórico ao reabrir
+- **Certificado P1** (`005-course-certificate`): elegibilidade admin (`CertificadoElegibilidade`) + emissão lazy na 1ª `GET .../certificado/pdf` (PDF on-the-fly via `certpdf`/fpdf+TTF); UI `CursoCertificadoPanel` na ficha do curso (`CursoPage` `/cursos/:id`); gestão **só admin**; seed `004_seed_certificado_demo` = **só** elegibilidade (sem PDF pré-emitido); **sem** S3/tf/`CERT_*` de certificado; destroy = linhas somem com o RDS
+- **UI escola P1** (`006-escola-ui`): AppShell + catálogo em `/`; fichas `/cursos/:id` e `/aulas/:id`; Agenda `/aulas`; **sem** páginas Biblioteca/Certificados; live/VOD/chat na aula; certificado no curso
 
 ### Fora do escopo (não implementar sem pedido)
 - Moderação de chat P2 / IVS Chat (US5 de `004`)
@@ -117,9 +118,9 @@ Seed certificado (migration `004_seed_certificado_demo`): se aluno seed + curso 
 
 Live (feature `003`): modelo `AulaLive` (`handler/live_handler.go`, `repository/live_repository.go`); status `agendada` \| `ao_vivo` \| `encerrada` (ausência = `inativa`); schedule/cancel/start/stop; env `LIVE_BACKEND` (`stub` \| `ivs`) + `IVS_*` ([contracts/live-env](./specs/003-live-streaming-ivs/contracts/live-env.md)). Stub ignora `IVS_*`; AWS fail-fast se `ivs` incompleto. `Aula.Status` CRUD **não** é o estado da live. Sem seed `ao_vivo`. IaC: `infra/ivs.tf` + SSM/ECS; output só `ivs_channel_arn`. Warm-up: [check-live-warmup.ps1](./infra/check-live-warmup.ps1).
 
-Chat (feature `004`): hub in-process (`internal/chat`) por `aula_id`; `handler/chat_handler.go`; path `GET /api/v1/aulas/:id/chat/ws?token=...` (JWT na query; não logar URI com token); texto ≤ 500; sala independente do status live; mensagens efêmeras à conexão; UI `AulaChatPanel` na `AulasPage`. ALB `idle_timeout = 3600` (`infra/alb.tf`); sem stickiness; sem Redis/API GW WS. Moderação P2 **fora**. Contratos: [chat-ws](./specs/004-live-class-chat/contracts/chat-ws.md), [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
+Chat (feature `004`): hub in-process (`internal/chat`) por `aula_id`; `handler/chat_handler.go`; path `GET /api/v1/aulas/:id/chat/ws?token=...` (JWT na query; não logar URI com token); texto ≤ 500; sala independente do status live; mensagens efêmeras à conexão; UI `AulaChatPanel` na `AulaPage`. ALB `idle_timeout = 3600` (`infra/alb.tf`); sem stickiness; sem Redis/API GW WS. Moderação P2 **fora**. Contratos: [chat-ws](./specs/004-live-class-chat/contracts/chat-ws.md), [chat-env](./specs/004-live-class-chat/contracts/chat-env.md).
 
-Certificado (feature `005` P1): models `CertificadoElegibilidade` + `Certificado` (`status` `valido`\|`invalidado`); admin marca elegibilidade **sem** emitir; aluno elegível solicita PDF → lazy emit + stream `application/pdf`; invalidar remove elegibilidade; reabilitar + nova solicitação = **novo** id; UI no contexto do curso (`CursoCertificadoPanel`); **sem** página “Certificados”; **sem** Terraform/S3 de certificado; P2 (template/lista) **fora**.
+Certificado (feature `005` P1): models `CertificadoElegibilidade` + `Certificado` (`status` `valido`\|`invalidado`); admin marca elegibilidade **sem** emitir; aluno elegível solicita PDF → lazy emit + stream `application/pdf`; invalidar remove elegibilidade; reabilitar + nova solicitação = **novo** id; UI no contexto do curso (`CursoCertificadoPanel` em `CursoPage`); **sem** página “Certificados”; **sem** Terraform/S3 de certificado; P2 (template/lista) **fora**.
 
 ## Backend (Go)
 
@@ -166,8 +167,8 @@ backend/
 frontend/src/
 ├── api/client.ts       # fetch + token JWT (incl. live + vod + chat + certificado)
 ├── auth/               # AuthContext, permissions, ProtectedRoute
-├── components/         # LivePlayer; AulaChatPanel; CursoCertificadoPanel
-├── pages/              # uma page por recurso (live+chat na AulasPage; cert na CursosPage)
+├── components/         # AppShell; ui/; LivePlayer; AulaChatPanel; CursoCertificadoPanel
+├── pages/              # Home, CursoPage (/cursos/:id), AulaPage (/aulas/:id + live/VOD/chat), Agenda, Login, Alunos, Usuarios
 └── utils/date.ts       # datas BR (espelhar backend)
 ```
 

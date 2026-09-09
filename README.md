@@ -298,7 +298,7 @@ Credenciais seed (defaults de **dev**, iguais ao local): admin / professor / alu
 
 **Demo VOD (passos extras ≤ ~10 min):**
 
-1. Login `aluno@estudaja.com` → **Aulas** → aula de demo → reproduzir gravação seed (sem upload prévio).
+1. Login `aluno@estudaja.com` → **Agenda** ou curso → ficha `/aulas/:id` → reproduzir gravação seed (sem upload prévio).
 2. (Opcional) Login professor → substituir MP4 ≤ 50 MB na ficha → aluno vê o novo conteúdo.
 3. Confirmar: **sem** página Biblioteca; **sem** download; visitante sem JWT não reproduz.
 4. Validação ponta a ponta: [specs/002-vod-library/quickstart.md](./specs/002-vod-library/quickstart.md).
@@ -309,7 +309,7 @@ O seed **recria** a cada apply limpo: 1 curso, 1 aula, 1 VOD publicado (asset `d
 
 1. Após publish: confirmar `LIVE_BACKEND=ivs` na task e `ivs_channel_arn` no output (sem key/URL em outputs).
 2. (Opcional P2) Professor → **Agendar transmissão** (exige horário na aula) — aluno vê **Agendada** sem player.
-3. No warm-up T−5: professor (ou admin) → **Aulas** → ficha → **Iniciar transmissão** → copiar servidor RTMPS + stream key → OBS (serviço Personalizado; H.264+AAC; keyframe 2 s; ≤ 3,5 Mbps).
+3. No warm-up T−5: professor (ou admin) → ficha `/aulas/:id` → **Iniciar transmissão** → copiar servidor RTMPS + stream key → OBS (serviço Personalizado; H.264+AAC; keyframe 2 s; ≤ 3,5 Mbps).
 4. Aluno em outra sessão → mesma ficha → distingue **agendada / ao vivo / encerrada** e **Gravação**; reproduz in-app só em **ao vivo** (IVS Player). Sem ingest/botões de gestão.
 5. Encerrar live; se houver VOD 002, a ficha **pode** apontar a gravação (sem pipeline live→VOD). Reiniciar na mesma sessão **sem** novo apply. No máximo **uma** live `ao_vivo`.
 6. Validação ponta a ponta: [specs/003-live-streaming-ivs/quickstart.md](./specs/003-live-streaming-ivs/quickstart.md).
@@ -318,14 +318,14 @@ Local/CI: `LIVE_BACKEND=stub` — estados/RBAC/erros PT **sem** vídeo real (pla
 
 **Demo chat da aula (passos extras ≤ ~15 min incremental — SC-005):**
 
-1. Após publish + health: dois browsers (aluno + professor/admin) em `{frontend_url}` → mesma aula → painel **Chat** (distinto de live/VOD).
+1. Após publish + health: dois browsers (aluno + professor/admin) em `{frontend_url}` → mesma aula `/aulas/:id` → painel **Chat** (distinto de live/VOD).
 2. Enviar texto ≤ 500 chars → fan-out com **nome** do autor; outra aula isolada; F5 = painel vazio (sem histórico).
 3. WS via `wss` no host de `{api_url}` (CloudFront). Não usar `alb_dns_name` no browser. **Não** colar URLs com `?token=`.
 4. Validação: [specs/004-live-class-chat/quickstart.md](./specs/004-live-class-chat/quickstart.md) §C. Local/CI: §A / §B (WS real no Compose; testes Go sem AWS).
 
 **Demo certificado (passos extras ≤ ~15 min incremental — SC-005):**
 
-1. Após publish + health: login `aluno@estudaja.com` → **Cursos** → curso demo → painel certificado (seed já deixou elegível; **sem** certificado pré-emitido).
+1. Após publish + health: login `aluno@estudaja.com` → Home (catálogo) → `/cursos/:id` do curso demo → painel certificado (seed já deixou elegível; **sem** certificado pré-emitido).
 2. Solicitar/baixar PDF → verificar nome, curso e data BR; segunda solicitação reutiliza o mesmo ativo.
 3. (Opcional) Admin invalida → aluno bloqueado em PT → admin reabilita → aluno obtém **novo** id/PDF.
 4. Professor **sem** controles de gestão. **Sem** página “Certificados”; **sem** S3 de cert; **sem** NAT/Redis/Cognito.
