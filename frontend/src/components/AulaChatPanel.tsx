@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { buildAulaChatWsUrl } from '../api/client'
 import { getToken } from '../auth/auth'
+import { Button } from './ui/Button'
 
 const MAX_TEXTO = 500
 const PING_INTERVAL_MS = 3 * 60 * 1000
@@ -99,8 +100,6 @@ export function AulaChatPanel({ aulaId }: AulaChatPanelProps) {
         setFormError((frame as { error: string }).error || 'falha ao enviar mensagem')
         return
       }
-
-      // chat.pong e outros: ignorar na lista
     }
 
     ws.onerror = () => {
@@ -165,33 +164,46 @@ export function AulaChatPanel({ aulaId }: AulaChatPanelProps) {
   const canSend = connState === 'conectado'
 
   return (
-    <div className="aula-chat-panel">
+    <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
       {statusMsg && (
-        <p className={connState === 'erro' || connState === 'desconectado' ? 'error' : 'muted'}>
+        <p
+          className={`mb-3 text-sm ${
+            connState === 'erro' || connState === 'desconectado' ? 'text-live' : 'text-muted'
+          }`}
+        >
           {statusMsg}
         </p>
       )}
 
-      <ul className="aula-chat-list" ref={listRef} aria-live="polite">
+      <ul
+        className="mb-4 max-h-72 space-y-3 overflow-y-auto rounded-xl border border-border bg-bg/40 px-3 py-3"
+        ref={listRef}
+        aria-live="polite"
+      >
         {messages.length === 0 ? (
-          <li className="muted">Nenhuma mensagem nesta sessão. O histórico não é guardado.</li>
+          <li className="py-6 text-center text-sm text-muted">
+            Nenhuma mensagem nesta sessão. O histórico não é guardado.
+          </li>
         ) : (
           messages.map((msg) => (
-            <li key={msg.id} className="aula-chat-item">
-              <span className="aula-chat-meta">
-                <strong>{msg.autor.nome}</strong>
-                <span className="muted"> · {msg.enviado_em}</span>
-              </span>
-              <span className="aula-chat-texto">{msg.texto}</span>
+            <li key={msg.id} className="rounded-xl border border-border/80 bg-bg-elevated px-3 py-2">
+              <p className="text-xs text-muted">
+                <strong className="text-ink">{msg.autor.nome}</strong>
+                {' · '}
+                {msg.enviado_em}
+              </p>
+              <p className="mt-1 text-sm">{msg.texto}</p>
             </li>
           ))
         )}
       </ul>
 
-      {formError && <p className="error">{formError}</p>}
+      {formError && (
+        <p className="mb-3 rounded-xl bg-live/12 px-3 py-2 text-sm text-live">{formError}</p>
+      )}
 
-      <form className="aula-chat-form" onSubmit={handleSubmit}>
-        <label>
+      <form onSubmit={handleSubmit}>
+        <label className="field mb-3">
           Mensagem
           <textarea
             value={texto}
@@ -205,13 +217,13 @@ export function AulaChatPanel({ aulaId }: AulaChatPanelProps) {
             disabled={!canSend}
           />
         </label>
-        <div className="aula-chat-form-footer">
-          <span className="muted">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-muted">
             {runeCount}/{MAX_TEXTO}
           </span>
-          <button type="submit" disabled={!canSend}>
+          <Button type="submit" disabled={!canSend}>
             Enviar
-          </button>
+          </Button>
         </div>
       </form>
     </div>

@@ -1,78 +1,43 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
-import {
-  canManageAlunos,
-  canManageAulas,
-  canManageCursos,
-  canManageUsers,
-  roleLabel,
-} from './auth/auth'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { ProtectedRoute } from './auth/ProtectedRoute'
+import { AppShell } from './components/layout/AppShell'
+import { AgendaPage } from './pages/AgendaPage'
 import { AlunosPage } from './pages/AlunosPage'
-import { AulasPage } from './pages/AulasPage'
-import { CursosPage } from './pages/CursosPage'
+import { AulaPage } from './pages/AulaPage'
+import { CursoPage } from './pages/CursoPage'
+import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 
 function AppLayout() {
-  const { user, logout } = useAuth()
-  if (!user) return null
-
   return (
-    <div className="layout">
-      <header>
-        <div>
-          <strong>EstudaJá</strong>
-          <span>
-            {user.nome} · {roleLabel(user.role)}
-          </span>
-        </div>
-        <nav>
-          <Link to="/cursos">Cursos</Link>
-          <Link to="/aulas">Aulas</Link>
-          {canManageAlunos(user.role) && <Link to="/alunos">Alunos</Link>}
-          {canManageUsers(user.role) && <Link to="/usuarios">Usuários</Link>}
-          <button type="button" className="secondary" onClick={logout}>
-            Sair
-          </button>
-        </nav>
-      </header>
-      <main>
-        <Routes>
-          <Route path="/" element={<Navigate to="/cursos" replace />} />
-          <Route
-            path="/cursos"
-            element={
-              <CursosPage
-                title="Cursos"
-                emptyMessage="Nenhum curso cadastrado."
-                canWrite={canManageCursos(user.role)}
-              />
-            }
-          />
-          <Route
-            path="/aulas"
-            element={<AulasPage canWrite={canManageAulas(user.role)} />}
-          />
-          <Route
-            path="/alunos"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AlunosPage canWrite={canManageAlunos(user.role)} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/usuarios"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <UsuariosPage />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </main>
-    </div>
+    <AppShell>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/cursos" element={<Navigate to="/" replace />} />
+        <Route path="/cursos/:id" element={<CursoPage />} />
+        <Route path="/aulas" element={<AgendaPage />} />
+        <Route path="/aulas/:id" element={<AulaPage />} />
+        <Route
+          path="/alunos"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <AlunosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <UsuariosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppShell>
   )
 }
 
@@ -80,7 +45,7 @@ export default function App() {
   const { loading } = useAuth()
 
   if (loading) {
-    return <p className="loading-page">Carregando...</p>
+    return <p className="loading-page">Carregando a escola...</p>
   }
 
   return (

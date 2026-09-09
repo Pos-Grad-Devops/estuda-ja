@@ -17,6 +17,7 @@ export type Curso = {
   descricao: string
   created_at: string
   updated_at: string
+  aulas?: Aula[]
 }
 
 export type Aula = {
@@ -203,6 +204,7 @@ export const api = {
   },
   cursos: {
     list: () => request<Curso[]>('/api/v1/cursos'),
+    get: (id: number) => request<Curso>(`/api/v1/cursos/${id}`),
     create: (data: Pick<Curso, 'titulo' | 'descricao'>) =>
       request<Curso>('/api/v1/cursos', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: Pick<Curso, 'titulo' | 'descricao'>) =>
@@ -212,6 +214,7 @@ export const api = {
   aulas: {
     list: (cursoId?: number) =>
       request<Aula[]>(`/api/v1/aulas${cursoId ? `?curso_id=${cursoId}` : ''}`),
+    get: (id: number) => request<Aula>(`/api/v1/aulas/${id}`),
     create: (data: Pick<Aula, 'curso_id' | 'titulo' | 'descricao' | 'agendada_em' | 'status'>) =>
       request<Aula>('/api/v1/aulas', { method: 'POST', body: JSON.stringify(data) }),
     update: (

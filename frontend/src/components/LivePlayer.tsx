@@ -61,6 +61,7 @@ export type LivePlayerProps = {
 /**
  * Player da transmissão ao vivo. No stub / sem URL: mensagem PT (sem &lt;video&gt; vazio).
  * Com modo ivs + URL: Amazon IVS Player Web SDK (CDN) + &lt;video&gt; âncora.
+ * Visual: tokens da escola (superfície, cantos, borda, cor live).
  */
 export function LivePlayer({ modo, playbackUrl, mensagem }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -139,7 +140,10 @@ export function LivePlayer({ modo, playbackUrl, mensagem }: LivePlayerProps) {
 
   if (!canPlayIvs) {
     return (
-      <div className="live-player-stub" role="status">
+      <div
+        className="rounded-2xl border border-live/30 bg-live/10 px-4 py-6 text-sm text-ink"
+        role="status"
+      >
         <p>
           {mensagem ??
             (modo === 'stub'
@@ -151,12 +155,16 @@ export function LivePlayer({ modo, playbackUrl, mensagem }: LivePlayerProps) {
   }
 
   return (
-    <div className="live-player-block">
-      {fatal && <p className="error">{fatal}</p>}
-      {statusMsg && !fatal && <p className="muted">{statusMsg}</p>}
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+      {fatal && (
+        <p className="border-b border-live/30 bg-live/12 px-4 py-2 text-sm text-live">{fatal}</p>
+      )}
+      {statusMsg && !fatal && (
+        <p className="border-b border-border px-4 py-2 text-sm text-muted">{statusMsg}</p>
+      )}
       <video
         ref={videoRef}
-        className="live-player"
+        className="aspect-video w-full bg-bg"
         playsInline
         controls
         controlsList="nodownload"
