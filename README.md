@@ -154,7 +154,7 @@ docker compose up --build
 make test
 ```
 
-Pipeline em `.github/workflows/ci.yml`: testes do backend, build do frontend e build das imagens Docker. Publish AWS da demo no caminho mínimo = **manual** (seção abaixo). CD opcional (P3) = `.github/workflows/cd.yml` — ver subseção **CD opcional (P3)**.
+Pipeline em `.github/workflows/ci.yml`: testes do backend, testes unitários do frontend (RBAC), build do frontend e build das imagens Docker. Publish AWS da demo no caminho mínimo = **manual** (seção abaixo). CD opcional (P3) = `.github/workflows/cd.yml` — ver subseção **CD opcional (P3)**.
 
 ### Fora do escopo atual (produto)
 

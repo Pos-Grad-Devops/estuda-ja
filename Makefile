@@ -15,6 +15,7 @@ frontend:
 
 test:
 	cd backend && go test ./...
+	cd frontend && npm test
 	cd frontend && npm run build
 
 build:
