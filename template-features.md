@@ -1,6 +1,7 @@
 ## Template pra preencher
 
 ### Projeto: `EstudaJá — plataforma de cursos ao vivo (aula magna) + VOD`
+
 ### Equipe: `Gustavo Santos Arruda, Pedro Lucas dos Santos Ribeiro, Renan Roseno dos Santos, Victor da Silva Neves`
 
 Cinco features essenciais do produto (das quais três entram como prioridade):
@@ -11,96 +12,116 @@ Cinco features essenciais do produto (das quais três entram como prioridade):
 4. Certificado de conclusão do curso
 5. Catálogo, agenda e acesso autenticado (cursos/aulas + papéis)
 
+As três priorizadas estão **na mesma ficha da aula** (`/aulas/:id`): bloco Transmissão ao vivo, bloco Gravação e Chat da aula. Login JWT. A live **não** gera o MP4. O chat **não** depende da live estar ligada.
+
 ---
+
+
 
 ### 🥇 Feature 1 — `Transmissão ao vivo em massa (aula magna)`
 
 - **Problema real que ela resolve:**
-  A aula tem horário fixo e milhares de alunos batem na porta no mesmo minuto. Se o player não abre em T−0, a aula simplesmente não aconteceu — não dá para “ir escalando aos poucos”. Sem essa peça, o EstudaJá deixa de ser aula magna e vira só mais um site de curso.
-
+A aula tem horário fixo e concentra os acessos no mesmo minuto. Se a transmissão não estiver pronta em T−0, perde-se o momento principal da aula — não dá para preparar a infraestrutura aos poucos depois que ela começou. Sem essa peça, o EstudaJá deixa de atender à proposta de aula magna e se limita ao conteúdo gravado.
 - **Critério(s) de prioridade que mais pesaram:**
-  Valor central do produto (é a proposta de valor); risco técnico e de negócio (pico instantâneo + SLA 99,9% na janela ao vivo); irreversibilidade do horário — falhar nesse minuto não tem replay.
-
+Valor central do produto; risco técnico e de negócio causado pelo pico instantâneo; meta de 99,9% de disponibilidade na janela ao vivo; e necessidade de preparar a transmissão antes do horário marcado.
 - **Em uma frase o que seria a aplicação utópica** (a versão completa, dos sonhos):
-  Canal elástico para dezenas de milhares, qualidade adaptativa, DVR, tokenização de playback, fallback automático, multi-região, audiência em tempo real e a live virando VOD sozinha no encerramento.
+Canal elástico para dezenas de milhares, qualidade adaptativa, DVR, tokenização de playback, fallback automático, multi-região, audiência em tempo real e a live virando VOD sozinha no encerramento.
+- **E qual seria um MVP comercializável?** (a menor versão possível, ponta a ponta, entregável em ~3 dias):
+Professor ou admin agenda, inicia e encerra a transmissão na ficha da aula; o aluno autenticado acompanha no player da mesma tela. Na demo AWS, o sinal é enviado pelo OBS para um único canal IVS. A live pode ficar inativa, agendada, ao vivo ou encerrada — estado separado do status cadastral da aula. Não há DVR, lives simultâneas nem conversão automática para VOD.
 
-- **E qual seria um MVP comercializavel?** (a menor versão possível, ponta a ponta, entregável em ~3 dias):
-  Uma aula agendada, professor entra ao vivo (OBS + um canal de streaming), aluno autenticado assiste na ficha da aula; estados simples (agendada / ao vivo / encerrada). Um canal, sem DVR, sem multi-região, sem gravação automática.
+
 
 ##### Fatias E2E (1 entrega por dia)
 
 Cada dia amplia o caminho do usuário. Nada de “dia 1 = banco, dia 2 = API, dia 3 = tela”.
 
-| Dia | O que o usuário já faz de ponta a ponta | Ainda não entra |
-| --- | --- | --- |
-| **1 — Assistir agora** | Aluno abre a ficha da aula, vê que está ao vivo e assiste no player (aula seed já ligada; player pode ser stub/HLS fixo). | Painel do professor, agenda, ingest OBS. |
-| **2 — Ligar e desligar** | Professor inicia e encerra na ficha; aluno vê o estado mudar (agendada → ao vivo → encerrada) e só reproduz quando está ao vivo. | Canal real, horário obrigatório, OBS. |
-| **3 — Transmitir de verdade** | Professor agenda o horário, manda o sinal (OBS + um canal) e a turma assiste o stream real na mesma ficha. Fecha o MVP. | DVR, multi-canal, live→VOD, tokenização. |
 
-No dia 1 o aluno **já assiste** a aula magna. Os dias 2 e 3 só deixam o professor no controle e trocam o stub pelo stream de verdade.
+| Dia                                   | O que o usuário já faz de ponta a ponta                                                                                                                                                                                                                                                                                                                   | Ainda não entra                                            |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **1 — Controlar o estado localmente** | Professor ou admin inicia e encerra a live na ficha da aula. O aluno autenticado abre a mesma aula e vê o estado correto; o player de live só é oferecido quando ela está **ao vivo**. No ambiente local, o backend `stub` permite testar fluxo e permissões, mas não fornece vídeo real nem credenciais de ingestão. A live não começa ligada pelo seed. | Sinal real por OBS/IVS e agendamento da live.              |
+| **2 — Transmitir na AWS**             | Na demo AWS, professor ou admin inicia a live, obtém servidor e stream key na ficha e envia o sinal pelo OBS para o canal IVS da sessão. O aluno assiste no player da aula. A chave permanece a mesma até o `destroy`; encerrar permite iniciar novamente sem recriar a stack. O sistema mantém no máximo uma aula ao vivo por vez.                       | Agendamento; DVR; lives simultâneas; live→VOD.             |
+| **3 — Agendar e preparar a abertura** | Professor ou admin agenda a transmissão de uma aula com data e hora. O aluno distingue os estados **agendada**, **ao vivo** e **encerrada**; o gestor pode cancelar, iniciar, encerrar e reagendar. A API ainda permite iniciar diretamente sem agendamento. Se houver VOD, ele continua como gravação separada.                                          | DVR, múltiplos canais, live→VOD e tokenização de playback. |
+
+
+No primeiro dia, o fluxo de controle e RBAC já pode ser validado de ponta a ponta no ambiente local, sem fingir que existe vídeo. O segundo acrescenta o sinal real na AWS; o terceiro completa os estados e a preparação operacional que já existem no projeto.
 
 ---
+
+
 
 ### 🥈 Feature 2 — `Chat em tempo real da aula`
 
 - **Problema real que ela resolve:**
-  Na aula magna o aluno não levanta a mão. Sem um canal de pergunta e reação no mesmo momento da live, a experiência vira TV passiva: o professor não sente a turma e o aluno não participa.
-
+Na aula magna o aluno não levanta a mão. Sem um canal de pergunta no mesmo momento da live, a experiência vira TV passiva: o professor não sente a turma e o aluno não participa.
 - **Critério(s) de prioridade que mais pesaram:**
-  Experiência (diferencia aula de broadcast); engajamento no pico de T−0; esforço menor que a live em si, mas alto impacto percebido; depende da aula existir, então entra logo depois da transmissão.
-
+Experiência e participação durante a aula; integração direta com a ficha já existente; alto impacto percebido com escopo menor que o streaming; e manutenção das permissões já definidas para aluno, professor e admin.
 - **O "elefante" dela** (a versão completa, dos sonhos):
-  Moderação, fila de perguntas, recados do professor, reações, histórico persistente, chat sincronizado com o replay, salas paralelas e limites sofisticados de abuso.
-
+Moderação, fila de perguntas, recados do professor, reações, histórico persistente, chat sincronizado com o replay, salas paralelas e limites sofisticados de abuso.
 - **A primeira fatia** (a menor versão possível, ponta a ponta, entregável em ~3 dias):
-  Sala por aula via WebSocket: texto curto, todos os papéis enviam e recebem enquanto estão conectados. Sem histórico ao reabrir, sem moderação, sem emojis/reação.
+Painel WebSocket na ficha da aula, com uma sala por aula e mensagens de até 500 caracteres. Aluno, professor e admin participam enquanto estão conectados. A sala funciona independentemente do estado da live e não mantém histórico ao reabrir. Moderação, reações e anexos ficam de fora.
+
+
 
 ##### Fatias E2E (1 entrega por dia)
 
-| Dia | O que o usuário já faz de ponta a ponta | Ainda não entra |
-| --- | --- | --- |
-| **1 — Mandar recado** | Aluno (e professor) abre a ficha da aula, envia um texto e a turma que está na mesma tela lê na hora (mesmo que seja uma sala só e atualize por polling). | WebSocket, nome de quem falou, uma sala por aula, limite de tamanho. |
-| **2 — Conversar ao vivo** | A mensagem aparece na hora para todo mundo conectado (WebSocket); cada recado mostra quem falou. A aula já “tem voz”. | Isolamento entre aulas, teto de caracteres, sumir ao sair. |
-| **3 — Chat daquela aula** | Cada aula tem a própria sala; texto curto (ex.: 500 caracteres); ao sair/reabrir a conversa some. Fecha o MVP. | Moderação, histórico, reações, fila de perguntas, replay. |
+Cada dia amplia o caminho do usuário. Nada de “dia 1 = banco, dia 2 = API, dia 3 = tela”.
 
-No dia 1 a turma **já conversa** na aula. Os dias 2 e 3 só deixam isso instantâneo, identificado e isolado por aula — não inventam o chat no último dia.
+
+| Dia                              | O que o usuário já faz de ponta a ponta                                                                                                                                                                                                                                                      | Ainda não entra                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **1 — Conversar na ficha**       | Dois usuários autenticados abrem a mesma aula e trocam mensagens em tempo real pelo painel WebSocket. Cada mensagem mostra o nome do autor, e o painel começa vazio quando a ficha é reaberta. O chat funciona com ou sem live ativa.                                                        | Isolamento entre aulas, validação do texto e execução na AWS.                         |
+| **2 — Isolar e proteger a sala** | A conexão usa o JWT do login e fica vinculada à aula informada no endereço WebSocket. Mensagens de uma aula não aparecem em outra; textos vazios ou com mais de 500 caracteres são recusados. Aluno, professor e admin participam, mas o chat não concede ao aluno controles de live ou VOD. | Operação pela infraestrutura da demo; moderação; histórico.                           |
+| **3 — Executar na demo AWS**     | O mesmo WebSocket funciona pela API ECS da sessão, com hub em memória e sem Redis AWS. O ALB usa `idle_timeout` de 3600 segundos, e o protocolo envia `ping/pon g` para manter a conexão ativa. Ao destruir a demo ou reiniciar a API, conexões e mensagens desaparecem.                     | Escala horizontal, histórico, moderação, reações, fila de perguntas e chat no replay. |
+
+
+No primeiro dia a turma já conversa na ficha. O segundo acrescenta as validações, o isolamento por aula e o RBAC que o código aplica. O terceiro leva o mesmo protocolo para a infraestrutura efêmera da demo, sem prometer carga ou persistência que não foram implementadas.
 
 ---
+
+
 
 ### 🥉 Feature 3 — `Biblioteca de gravações (VOD)`
 
 - **Problema real que ela resolve:**
-  Quem perdeu o horário fixo ou quer revisar não tem segunda chance. Sem o gravado, o valor do curso morre quando a live acaba — e o aluno que não entrou em T−0 está perdido.
-
+Quem perdeu o horário fixo ou quer revisar não tem segunda chance. Sem o gravado, o valor do curso morre quando a live acaba — e o aluno que não entrou em T−0 está perdido.
 - **Critério(s) de prioridade que mais pesaram:**
-  Valor comercial (acesso continua depois da aula); cobre o SLA mais frouxo fora do horário ao vivo (99%); reduz a perda de quem não consegue estar no minuto da transmissão.
-
+Continuidade do acesso depois da aula; valor para quem perdeu o horário ou quer revisar; meta de 99% de disponibilidade fora da janela ao vivo; e reaproveitamento da ficha de aula já usada para live e chat.
 - **O "elefante" dela** (a versão completa, dos sonhos):
-  Pipeline live→VOD automático, transcodificação, legendas, busca no conteúdo, CDN de mídia, playlists, DRM e download controlado.
-
+Pipeline live→VOD automático, transcodificação, legendas, busca no conteúdo, CDN de mídia, playlists, DRM e download controlado.
 - **A primeira fatia** (a menor versão possível, ponta a ponta, entregável em ~3 dias):
-  Professor envia um MP4 na ficha da aula; aluno assiste no mesmo lugar. Um arquivo por aula, com trocar/apagar. Sem transcode, sem live→VOD, sem página “Biblioteca” separada.
+Um MP4 publicado por aula, reproduzido na própria ficha e sem fluxo de download. Professor ou admin pode enviar, substituir ou remover o arquivo; aluno apenas assiste. Não há página “Biblioteca” dedicada nem conversão automática da live em gravação.
+
+
 
 ##### Fatias E2E (1 entrega por dia)
 
-| Dia | O que o usuário já faz de ponta a ponta | Ainda não entra |
-| --- | --- | --- |
-| **1 — Assistir a gravação** | Aluno abre a ficha da aula e assiste o MP4 já publicado (vídeo seed). Quem perdeu a live **já revisa**. | Upload do professor, trocar/apagar, página Biblioteca. |
-| **2 — Publicar o vídeo** | Professor envia um MP4 na mesma ficha; o aluno passa a ver esse arquivo no player. | Substituir, remover, transcode, CDN. |
-| **3 — Trocar ou remover** | Professor substitui ou apaga a gravação; a ficha mostra se há ou não vídeo. Fecha o MVP. | Live→VOD automático, legendas, busca, download, DRM. |
+Cada dia amplia o caminho do usuário. Nada de “dia 1 = banco, dia 2 = API, dia 3 = tela”.
 
-No dia 1 o aluno **já assiste** o gravado. Os dias 2 e 3 só entregam a publicação e a gestão ao professor — o valor da biblioteca não espera o upload existir.
+
+| Dia                                     | O que o usuário já faz de ponta a ponta                                                                                                                                                                                                                         | Ainda não entra                                                                                      |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **1 — Assistir à gravação**             | Aluno autenticado abre a ficha da aula, identifica se há gravação publicada e assiste no player da própria tela. A aula de exemplo já recebe um MP4 pelo seed. Live e VOD aparecem como blocos separados; não existe página “Biblioteca” nem botão de download. | Publicação e remoção pelo gestor; armazenamento S3 da demo.                                          |
+| **2 — Publicar, substituir ou remover** | Professor ou admin envia um MP4 de até 50 MB na mesma ficha. Cada aula mantém no máximo um VOD vigente: um novo envio substitui o anterior e remove o arquivo antigo; a remoção explícita tira a gravação da ficha. O aluno não recebe esses controles.         | Armazenamento e reprodução temporária na AWS; metadados e rascunho.                                  |
+| **3 — Executar na demo AWS**            | Na AWS, os vídeos ficam no bucket S3 privado da sessão e a API entrega acesso temporário para reprodução. Depois de um novo `apply` limpo e da subida da API, a migração repõe o clipe da aula de exemplo. O `destroy` remove bucket e objetos da sessão.       | Live→VOD, transcodificação, legendas, busca, download, DRM, CloudFront de mídia e página Biblioteca. |
+
+
+No primeiro dia, quem perdeu a live já consegue revisar a aula pelo vídeo de exemplo. O segundo entrega a gestão que professor e admin possuem no produto. O terceiro usa o mesmo fluxo na stack efêmera da AWS, sem criar uma biblioteca paralela.
 
 ---
+
+
 
 ### Ficou de fora (e por quê)
 
 Listem pelo menos 2 features que a equipe considerou e decidiu **não**
 priorizar agora. Uma linha de justificativa basta.
 
-| Feature descartada | Por que não entrou entre as 3 |
-| --- | --- |
-| Certificado de conclusão do curso | Só faz sentido depois que o curso aconteceu; não desbloqueia a aula magna nem o pico de T−0. Credencial importante, mas dá para emitir depois. |
+
+| Feature descartada                                            | Por que não entrou entre as 3                                                                                                                            |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Certificado de conclusão do curso                             | Só faz sentido depois que o curso aconteceu; não desbloqueia a aula magna nem o pico de T−0. Credencial importante, mas dá para emitir depois.           |
 | Catálogo, agenda e acesso autenticado (cursos/aulas + papéis) | É a base operacional, mas é commodity: o primeiro ciclo vive com 1 curso, 1 aula e logins seed. O risco e o diferencial estão no live, no chat e no VOD. |
 
+
 ---
+
