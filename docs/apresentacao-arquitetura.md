@@ -102,7 +102,7 @@ Quem perdeu o horário ou quer revisar assiste à aula gravada depois, no mesmo 
 ### Reservas — entregues, fora do top 3
 
 - **Certificado de conclusão** — importante ao fim do curso, mas não destrava a experiência da aula ao vivo
-- **Catálogo, agenda e login** — base do produto; o diferencial está na live, no chat e na gravação
+- **Catálogo e agenda** — base do produto; o diferencial está na live, no chat e na gravação
 
 </div>
 
@@ -124,7 +124,7 @@ Quem perdeu o horário ou quer revisar assiste à aula gravada depois, no mesmo 
 
 1. Alunos e professor **conversam na mesma tela** da aula, em tempo real
 2. Cada aula tem **sua própria sala**; mensagens curtas; nada vaza para outra turma
-3. Chat disponível na **plataforma publicada**, pronto para a demonstração
+3. **Na plataforma publicada:** turma acessa pelo link da demo e conversa durante a aula ao vivo — mesma experiência do local, com conexão estável do início ao fim
 
 ### 🥉 VOD
 
