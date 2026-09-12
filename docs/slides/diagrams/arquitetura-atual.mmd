@@ -1,0 +1,36 @@
+flowchart TB
+    subgraph Clientes["Clientes"]
+        Browser["Browser — aluno / professor / admin"]
+        OBS["OBS — ingestão do professor"]
+    end
+
+    subgraph Edge["Borda AWS (us-east-1)"]
+        CF_FE["CloudFront — frontend estático"]
+        CF_API["CloudFront — API HTTPS"]
+        ALB["ALB — idle 3600 s (WebSocket)"]
+    end
+
+    subgraph App["Aplicação"]
+        S3_FE["S3 — SPA React/Vite"]
+        ECS["ECS Fargate ARM64 — API Go + Fiber"]
+        WS["Hub WebSocket in-memory\n(chat por aula_id)"]
+    end
+
+    subgraph Streaming["Streaming ao vivo"]
+        IVS["AWS IVS — canal BASIC LOW\n(1 por sessão Terraform)"]
+    end
+
+    subgraph Dados["Dados e mídia"]
+        RDS[("RDS PostgreSQL\ndb.t4g.micro")]
+        S3_VOD["S3 privado — VOD\nURL pré-assinada ~15 min"]
+    end
+
+    Browser --> CF_FE --> S3_FE
+    Browser --> CF_API --> ALB --> ECS
+    Browser -.->|playback HLS| IVS
+    Browser -.->|MP4 temporário| S3_VOD
+    OBS -->|RTMP| IVS
+    ECS --> WS
+    ECS --> RDS
+    ECS -->|upload / presign| S3_VOD
+    ECS -->|estados live + credenciais| IVS

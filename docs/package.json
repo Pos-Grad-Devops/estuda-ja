@@ -4,10 +4,14 @@
   "description": "A **EstudaJá** é uma EdTech de aulas ao vivo em massa — estilo \"aula magna\" — com milhares de alunos simultâneos e conteúdo gravado sob demanda.",
   "main": "index.js",
   "scripts": {
-    "slides:diagrams": "for f in roadmap arquitetura fluxo; do mmdc -i slides/diagrams/$f.mmd -o slides/diagrams/$f.svg -b transparent; done",
+    "slides:diagrams": "for f in roadmap arquitetura fluxo roadmap-projecao arquitetura-atual; do mmdc -i slides/diagrams/$f.mmd -o slides/diagrams/$f.svg -b transparent; done",
+    "slides:diagrams:atual": "mmdc -i slides/diagrams/arquitetura-atual.mmd -o slides/diagrams/arquitetura-atual.svg -b transparent",
     "slides:html": "marp apresentacao.md -o apresentacao.html",
+    "slides:html:arquitetura": "marp apresentacao-arquitetura.md -o apresentacao-arquitetura.html",
     "slides:pdf": "marp apresentacao.md -o apresentacao.pdf",
-    "slides:pptx": "marp apresentacao.md -o apresentacao.pptx"
+    "slides:pdf:arquitetura": "marp apresentacao-arquitetura.md -o apresentacao-arquitetura.pdf",
+    "slides:pptx": "marp apresentacao.md -o apresentacao.pptx",
+    "slides:pptx:arquitetura": "marp apresentacao-arquitetura.md -o apresentacao-arquitetura.pptx"
   },
   "repository": {
     "type": "git",
