@@ -1,0 +1,8 @@
+flowchart LR
+  Gestor["Professor ou admin"] -->|"multipart MP4"| API["API Fiber"]
+  API -->|local| Disco["Disco VOD_LOCAL_DIR"]
+  API -->|s3| Bucket["Bucket S3 privado"]
+  Aluno["Aluno autenticado"] -->|"GET vod/playback JWT"| API
+  API -->|"JSON URL 15 min"| Aluno
+  Disco -->|"content token"| Player["video MP4 na ficha"]
+  Bucket -->|"presign GetObject"| Player

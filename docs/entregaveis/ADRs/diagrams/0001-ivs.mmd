@@ -1,0 +1,10 @@
+flowchart LR
+  subgraph awsDemo [Demo AWS]
+    OBS[OBS] --> IVS[Canal IVS BASIC]
+    API[API ECS] -->|"playback JWT"| Player[LivePlayer]
+    IVS --> Player
+  end
+  subgraph localCI [Local e CI]
+    Stub["LIVE_BACKEND stub"] --> Estados[Estados e RBAC]
+    Estados -.-> SemVideo[Sem video real]
+  end

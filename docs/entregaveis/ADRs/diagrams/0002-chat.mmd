@@ -1,0 +1,6 @@
+flowchart LR
+  Browser["Browser na ficha"] -->|"WSS JWT"| CF["CloudFront API"]
+  CF --> ALB["ALB idle 3600s"]
+  ALB --> ECS["Task ECS Fiber"]
+  ECS --> Hub["Hub em memoria"]
+  Hub -->|"broadcast por aula_id"| ECS
